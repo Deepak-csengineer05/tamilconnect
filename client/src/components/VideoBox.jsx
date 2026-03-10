@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Video } from 'lucide-react'
 
 const VideoBox = forwardRef(function VideoBox(
-  { label, language, interests, isLocal, muted, className },
+  { label, language, interests, isLocal, muted, hasStream, className },
   ref
 ) {
   if (isLocal) {
@@ -71,8 +71,8 @@ const VideoBox = forwardRef(function VideoBox(
         </div>
       </div>
 
-      {/* No video fallback */}
-      {!ref?.current?.srcObject && (
+      {/* No video fallback — driven by parent state, NOT ref.current (ref changes don't re-render) */}
+      {!hasStream && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#030F1E]">
           <Video size={48} className="text-slate-600" />
         </div>

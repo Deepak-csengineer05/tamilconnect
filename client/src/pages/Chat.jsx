@@ -26,13 +26,16 @@ export default function Chat() {
   const [camOn, setCamOn] = useState(true)
   const [chatOpen, setChatOpen] = useState(false)
   const [chatPanelOpen, setChatPanelOpen] = useState(true)
+  const [partnerTyping, setPartnerTyping] = useState(false)
   const [messages, setMessages] = useState([])
   const [reportOpen, setReportOpen] = useState(false)
+  const [remoteHasStream, setRemoteHasStream] = useState(false)
 
   // Refs
   const socketRef = useRef(null)
   const peerRef = useRef(null)
   const localStreamRef = useRef(null)
+  const remoteStreamRef = useRef(null)  // holds remote stream until DOM element mounts
   const currentCallRef = useRef(null)
   const localVideoRef = useRef(null)
   const remoteVideoRef = useRef(null)
@@ -83,6 +86,9 @@ export default function Chat() {
         currentCallRef.current = call
         if (call) {
           call.on('stream', (remoteStream) => {
+            // Store in ref so the useEffect can attach it once the DOM node is ready
+            remoteStreamRef.current = remoteStream
+            setRemoteHasStream(true)
             if (remoteVideoRef.current) {
               remoteVideoRef.current.srcObject = remoteStream
               safePlay(remoteVideoRef.current)
@@ -117,6 +123,10 @@ export default function Chat() {
     socket.on('call-ended', () => {
       toast('Call ended', { icon: '📞' })
       resetToIdle()
+    })
+
+    socket.on('partner-typing', (data) => {
+      setPartnerTyping(data.isTyping)
     })
 
     return () => {
@@ -165,6 +175,8 @@ export default function Chat() {
         call.answer(localStreamRef.current)
         currentCallRef.current = call
         call.on('stream', (remoteStream) => {
+          remoteStreamRef.current = remoteStream
+          setRemoteHasStream(true)
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = remoteStream
             safePlay(remoteVideoRef.current)
@@ -179,6 +191,22 @@ export default function Chat() {
       peer.destroy()
     }
   }, [])
+
+  // Re-attach streams when connected state renders — refs are null before this state
+  useEffect(() => {
+    if (status === 'connected') {
+      // Local video element only mounts in connected state; localVideoRef was null in startSearching()
+      if (localVideoRef.current && localStreamRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current
+        safePlay(localVideoRef.current)
+      }
+      // Remote stream may have arrived before the DOM node committed
+      if (remoteVideoRef.current && remoteStreamRef.current) {
+        remoteVideoRef.current.srcObject = remoteStreamRef.current
+        safePlay(remoteVideoRef.current)
+      }
+    }
+  }, [status])
 
   // Cleanup media on unmount
   useEffect(() => {
@@ -206,6 +234,8 @@ export default function Chat() {
     setPartnerUid(null)
     setRoomId(null)
     setMessages([])
+    setRemoteHasStream(false)
+    remoteStreamRef.current = null
     currentCallRef.current?.close()
     currentCallRef.current = null
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
@@ -294,6 +324,11 @@ export default function Chat() {
       message,
       senderName: profile?.displayName || 'You',
     })
+  }
+
+  const handleTyping = (isTyping) => {
+    if (!roomId || !socketRef.current) return
+    socketRef.current.emit('typing', { roomId, isTyping })
   }
 
   const handleReported = () => {
@@ -397,76 +432,87 @@ export default function Chat() {
             exit={{ opacity: 0 }}
             className="flex h-[calc(100vh-4rem)]"
           >
-            {/* Video area */}
-            <div className="flex-1 relative">
-              {/* Connected badge */}
-              <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 bg-[rgba(3,15,30,0.8)] backdrop-blur-sm rounded-full px-3 py-1.5 border border-[rgba(34,197,94,0.3)]">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-xs font-medium text-green-300">Connected</span>
+            {/* Video area — stacked on mobile, PIP layout on desktop */}
+            <div className="flex-1 flex flex-col md:block relative min-h-0">
+
+              {/* Remote video section — top ~60% on mobile, full area on desktop */}
+              <div className="flex-[3] min-h-0 relative md:absolute md:inset-0">
+                {/* Connected badge */}
+                <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-[rgba(3,15,30,0.8)] backdrop-blur-sm rounded-full px-3 py-1.5 border border-[rgba(34,197,94,0.3)]">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-xs font-medium text-green-300">Connected</span>
+                </div>
+
+                <VideoBox
+                  ref={remoteVideoRef}
+                  label={partnerInfo?.displayName}
+                  language={partnerInfo?.language}
+                  interests={partnerInfo?.interests}
+                  muted={false}
+                />
+
+                {/* Controls bar — inside remote section so it floats above local on mobile */}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-[rgba(3,15,30,0.85)] backdrop-blur-xl border border-[rgba(14,165,233,0.15)] rounded-2xl px-3 py-2.5">
+                  <button
+                    onClick={toggleMic}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                      micOn
+                        ? 'bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)]'
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}
+                  >
+                    {micOn ? <Mic size={17} /> : <MicOff size={17} />}
+                  </button>
+
+                  <button
+                    onClick={toggleCam}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                      camOn
+                        ? 'bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)]'
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}
+                  >
+                    {camOn ? <Video size={17} /> : <VideoOff size={17} />}
+                  </button>
+
+                  <button
+                    onClick={skipPartner}
+                    className="w-10 h-10 rounded-xl bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)] flex items-center justify-center hover:bg-[rgba(14,165,233,0.25)] transition-all"
+                  >
+                    <SkipForward size={17} />
+                  </button>
+
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    className="w-10 h-10 rounded-xl bg-[rgba(14,165,233,0.15)] text-amber-400 border border-amber-500/20 flex items-center justify-center hover:bg-amber-500/15 transition-all"
+                  >
+                    <Flag size={17} />
+                  </button>
+
+                  <div className="w-px h-6 bg-[rgba(14,165,233,0.15)] mx-0.5" />
+
+                  <button
+                    onClick={endCall}
+                    className="w-10 h-10 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white flex items-center justify-center hover:shadow-lg hover:shadow-red-500/25 transition-all"
+                  >
+                    <PhoneOff size={17} />
+                  </button>
+                </div>
               </div>
 
-              {/* Remote video */}
-              <VideoBox
-                ref={remoteVideoRef}
-                label={partnerInfo?.displayName}
-                language={partnerInfo?.language}
-                interests={partnerInfo?.interests}
-                muted={false}
-              />
-
-              {/* Local PIP */}
-              <VideoBox
-                ref={localVideoRef}
-                isLocal
-                muted
-              />
-
-              {/* Controls bar */}
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-[rgba(3,15,30,0.85)] backdrop-blur-xl border border-[rgba(14,165,233,0.15)] rounded-2xl px-4 py-3">
-                <button
-                  onClick={toggleMic}
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
-                    micOn
-                      ? 'bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)]'
-                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  }`}
-                >
-                  {micOn ? <Mic size={18} /> : <MicOff size={18} />}
-                </button>
-
-                <button
-                  onClick={toggleCam}
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
-                    camOn
-                      ? 'bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)]'
-                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  }`}
-                >
-                  {camOn ? <Video size={18} /> : <VideoOff size={18} />}
-                </button>
-
-                <button
-                  onClick={skipPartner}
-                  className="w-11 h-11 rounded-xl bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)] flex items-center justify-center hover:bg-[rgba(14,165,233,0.25)] transition-all"
-                >
-                  <SkipForward size={18} />
-                </button>
-
-                <button
-                  onClick={() => setReportOpen(true)}
-                  className="w-11 h-11 rounded-xl bg-[rgba(14,165,233,0.15)] text-amber-400 border border-amber-500/20 flex items-center justify-center hover:bg-amber-500/15 transition-all"
-                >
-                  <Flag size={18} />
-                </button>
-
-                <div className="w-px h-7 bg-[rgba(14,165,233,0.15)] mx-1" />
-
-                <button
-                  onClick={endCall}
-                  className="w-11 h-11 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white flex items-center justify-center hover:shadow-lg hover:shadow-red-500/25 transition-all"
-                >
-                  <PhoneOff size={18} />
-                </button>
+              {/* Local video section — bottom ~40% on mobile, PIP overlay on desktop */}
+              <div className="flex-[2] min-h-0 relative border-t border-[rgba(14,165,233,0.2)] md:border-t-0 md:absolute md:bottom-4 md:right-4 md:w-36 md:h-52 md:z-20 md:rounded-xl md:overflow-hidden md:border-2 md:border-[rgba(14,165,233,0.4)] md:shadow-lg md:shadow-black/40">
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                  style={{ transform: 'scaleX(-1)' }}
+                />
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
+                  <span className="text-xs font-medium text-white/90">You</span>
+                </div>
               </div>
             </div>
 
@@ -476,6 +522,9 @@ export default function Chat() {
                 <TextChat
                   messages={messages}
                   onSendMessage={sendMessage}
+                  onTyping={handleTyping}
+                  partnerTyping={partnerTyping}
+                  partnerName={partnerInfo?.displayName}
                   isOpen={true}
                   onToggle={() => setChatPanelOpen(false)}
                 />
@@ -499,6 +548,9 @@ export default function Chat() {
               <TextChat
                 messages={messages}
                 onSendMessage={sendMessage}
+                onTyping={handleTyping}
+                partnerTyping={partnerTyping}
+                partnerName={partnerInfo?.displayName}
                 isOpen={chatOpen}
                 onToggle={() => setChatOpen(!chatOpen)}
               />

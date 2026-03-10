@@ -225,6 +225,16 @@ function initializeSocket(io) {
         });
 
         /**
+         * Event: typing
+         * Relay typing status to the partner in the same room.
+         * Data: { roomId, isTyping }
+         */
+        socket.on('typing', (data) => {
+            const { roomId, isTyping } = data;
+            socket.to(roomId).emit('partner-typing', { isTyping });
+        });
+
+        /**
          * Event: skip-partner
          * User wants to skip current partner and find a new one.
          */

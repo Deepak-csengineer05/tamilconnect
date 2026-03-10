@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---- Theme variables ---- */
+:root {
+  --bg-body:       #020B18;
+  --nav-bg:        rgba(2, 11, 24, 0.85);
+  --nav-border:    rgba(14, 165, 233, 0.15);
+  --grad-from:     #0EA5E9;
+  --grad-to:       #06B6D4;
+  --scroll-track:  #020B18;
+  --scroll-thumb:  rgba(14, 165, 233, 0.4);
+  --scroll-thumbh: rgba(14, 165, 233, 0.6);
+}
+
+html.teal-theme {
+  --bg-body:       #020F0B;
+  --nav-bg:        rgba(2, 15, 11, 0.85);
+  --nav-border:    rgba(45, 212, 191, 0.15);
+  --grad-from:     #2DD4BF;
+  --grad-to:       #14B8A6;
+  --scroll-track:  #020F0B;
+  --scroll-thumb:  rgba(45, 212, 191, 0.4);
+  --scroll-thumbh: rgba(45, 212, 191, 0.6);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -10,7 +33,7 @@
 
 body {
   font-family: 'Poppins', sans-serif;
-  background-color: #020B18;
+  background-color: var(--bg-body);
   color: #f1f5f9;
   min-height: 100vh;
   overflow-x: hidden;
@@ -21,7 +44,7 @@ body {
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #0EA5E9, #06B6D4);
+  background: linear-gradient(135deg, var(--grad-from), var(--grad-to));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -42,20 +65,20 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #020B18;
+  background: var(--scroll-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(14, 165, 233, 0.4);
+  background: var(--scroll-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(14, 165, 233, 0.6);
+  background: var(--scroll-thumbh);
 }
 
 /* Firefox scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(14, 165, 233, 0.4) #020B18;
+  scrollbar-color: var(--scroll-thumb) var(--scroll-track);
 }
