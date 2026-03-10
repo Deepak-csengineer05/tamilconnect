@@ -1,165 +1,174 @@
-/* Compact 3D toggle — horizontal lever, Y-axis flip, dark navy ↔ teal */
+/* ── Realistic 3D Rocker Switch ─────────────────────────────────── */
 
+/* Housing — dark machined bezel with deep inset cavity */
 .tc-switch {
   display: inline-block;
-  background-color: #06060c;
-  width: 54px;
+  width: 60px;
   height: 28px;
-  box-shadow:
-    0 0 4px 1px rgba(0, 0, 0, 0.25),
-    0 0 1px 1px #000,
-    inset 0 1px 1px -1px rgba(255, 255, 255, 0.5),
-    inset 0 0 1px 4px #3a3640,
-    inset 0 0 1px 6px #000;
-  border-radius: 3px;
+  background: linear-gradient(155deg, #1c1c26 0%, #0e0e18 55%, #09090e 100%);
+  border-radius: 5px;
   padding: 4px;
-  perspective: 110px;
+  box-shadow:
+    /* outer drop */
+    0 6px 18px rgba(0,0,0,0.92),
+    0 2px 5px rgba(0,0,0,0.75),
+    /* top rim catch-light */
+    0 1px 0 rgba(255,255,255,0.07),
+    /* inner cavity recess */
+    inset 0 3px 9px rgba(0,0,0,1),
+    inset 0 1px 3px rgba(0,0,0,0.9),
+    inset 0 0 0 1px rgba(0,0,0,0.65);
+  perspective: 68px;
   cursor: pointer;
-  flex-shrink: 0;
   user-select: none;
   vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .tc-switch input {
   display: none;
 }
 
-/* OFF — dark: right side (0) slightly toward viewer */
+/* ── Rocker button ───────────────────────────────────────────────── */
 .tc-btn {
   display: block;
-  transition: all 0.3s cubic-bezier(1, 0, 1, 1);
-  transform-origin: center center -4px;
-  transform: translateZ(4px) rotateY(22deg);
-  transform-style: preserve-3d;
-  background: linear-gradient(to right, #001433 0%, #000a1f 30%, #000a1f 70%, #001433 100%);
+  width: 100%;
   height: 100%;
   position: relative;
+  transform-style: preserve-3d;
+  transform-origin: center center 0;
+  /* OFF — 0 (right) side raised: tilt right edge toward viewer */
+  transform: rotateY(-20deg);
+  transition:
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.18s ease;
+  border-radius: 2px;
   cursor: pointer;
+  /* Main face: top-edge specular + right side slightly brighter */
+  background:
+    linear-gradient(to bottom,
+      rgba(255,255,255,0.11) 0%,
+      rgba(255,255,255,0.04) 2px,
+      transparent 22%,
+      rgba(0,0,0,0.28) 100%),
+    linear-gradient(to right,
+      #020a14 0%,
+      #041120 38%,
+      #071b36 58%,
+      #0b2245 100%);
+  /* Right-edge raised highlight in OFF state */
+  box-shadow:
+    inset -1px 0 0 rgba(255,255,255,0.22),
+    inset -2px 0 6px rgba(60,130,230,0.12),
+    inset  2px 0 9px rgba(0,0,0,0.65),
+    inset  0  1px 0 rgba(255,255,255,0.09);
 }
 
-/* ON — teal: left side (1) toward viewer + teal glow */
-.tc-switch input:checked + .tc-btn {
-  transform: translateZ(4px) rotateY(-22deg);
-  box-shadow: -6px 0 14px rgba(45, 212, 191, 0.85);
-  background: linear-gradient(to right, #005c4a 0%, #003d30 30%, #003d30 70%, #005c4a 100%);
-}
-
-.tc-switch input:checked + .tc-btn .tc-light {
-  animation: tc-flicker 0.2s infinite 0.3s;
-}
-.tc-switch input:checked + .tc-btn .tc-shine {
-  opacity: 1;
-}
-.tc-switch input:checked + .tc-btn .tc-shadow {
-  opacity: 0;
-}
-
-/* Left bevelled face */
+/* Left depth face — visible when right side is raised */
 .tc-btn::before {
   content: "";
-  background:
-    linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0.8) 10%,
-      rgba(255, 255, 255, 0.25) 30%,
-      #000c1a 75%,
-      #00060f
-    )
-    50% 50% / 97% 97%,
-    #001840;
-  background-repeat: no-repeat;
-  width: 8px;
+  position: absolute;
+  left: 0; top: 0;
+  width: 5px;
   height: 100%;
   transform-origin: left center;
   transform: rotateY(-90deg);
-  position: absolute;
-  left: 0;
-  top: 0;
+  background: linear-gradient(to bottom, #010608 0%, #020b16 50%, #010608 100%);
 }
 
-/* Right bevelled face / drop shadow */
+/* Right depth face — visible when left side is raised */
 .tc-btn::after {
   content: "";
-  background-image: linear-gradient(to right, #000c1a, #00060f);
-  width: 8px;
+  position: absolute;
+  right: 0; top: 0;
+  width: 5px;
   height: 100%;
   transform-origin: right center;
   transform: rotateY(90deg);
-  position: absolute;
-  right: 0;
-  top: 0;
-  box-shadow: 8px 0 2px 0 #000, 14px 0 5px 0 rgba(0, 0, 0, 0.5);
+  background: linear-gradient(to bottom, #010608 0%, #020b16 50%, #010608 100%);
 }
 
-/* Inner teal light when ON */
+/* ── ON state — 1 (left) raised, teal lit ──────────────────────── */
+.tc-switch input:checked + .tc-btn {
+  transform: rotateY(20deg);
+  background:
+    linear-gradient(to bottom,
+      rgba(255,255,255,0.15) 0%,
+      rgba(255,255,255,0.05) 2px,
+      transparent 22%,
+      rgba(0,0,0,0.18) 100%),
+    linear-gradient(to right,
+      #00a87e 0%,
+      #00795c 38%,
+      #004f3c 58%,
+      #003228 100%);
+  box-shadow:
+    inset  1px 0 0 rgba(255,255,255,0.28),
+    inset  2px 0 7px rgba(45,212,191,0.22),
+    inset -2px 0 9px rgba(0,0,0,0.8),
+    inset  0  1px 0 rgba(255,255,255,0.13),
+    /* outer teal glow on left */
+    -3px 0 14px rgba(45,212,191,0.55),
+    -1px 0  6px rgba(45,212,191,0.35);
+}
+
+.tc-switch input:checked + .tc-btn .tc-light {
+  animation: tc-flicker 0.25s infinite 0.2s;
+}
+
+/* ── Inner elements ─────────────────────────────────────────────── */
+
+/* Teal glow broadcast when ON */
 .tc-light {
   opacity: 0;
-  animation: tc-light-off 1s;
+  animation: tc-light-off 0.8s forwards;
   position: absolute;
-  width: 100%;
-  height: 100%;
-  background-image: radial-gradient(rgba(160, 245, 232, 0.95), rgba(45, 212, 191, 0.85) 40%, transparent 70%);
+  inset: 0;
+  background: radial-gradient(
+    ellipse 65% 55% at 22% 50%,
+    rgba(150,240,222,0.65),
+    rgba(45,212,191,0.35) 45%,
+    transparent 72%
+  );
 }
 
-/* Dot texture */
+/* Fine dot texture */
 .tc-dots {
   position: absolute;
-  width: 100%;
-  height: 100%;
-  background-image: radial-gradient(transparent 30%, rgba(0, 10, 30, 0.65) 70%);
-  background-size: 3px 3px;
+  inset: 0;
+  background-image: radial-gradient(transparent 28%, rgba(0,5,18,0.52) 72%);
+  background-size: 2.5px 2.5px;
 }
 
-/* Power symbol — line (1) on left, open-circle (0) on right, both vertically centred */
+/* Power symbols: | (1) left side, ○ (0) right side */
 .tc-chars {
   position: absolute;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background:
-    linear-gradient(white, white) 28% 50% / 7% 40%,
-    radial-gradient(circle, transparent 50%, white 52%, white 70%, transparent 72%) 68% 50% / 35% 60%;
+    /* 1 — vertical bar */
+    linear-gradient(white, white) 27% 50% / 6% 36%,
+    /* 0 — open ring */
+    radial-gradient(circle,
+      transparent 47%,
+      white 49%, white 67%,
+      transparent 69%)
+    69% 50% / 30% 52%;
   background-repeat: no-repeat;
-  opacity: 0.55;
+  opacity: 0.48;
 }
 
-/* Shine highlight */
-.tc-shine {
-  transition: all 0.3s cubic-bezier(1, 0, 1, 1);
-  opacity: 0.3;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background:
-    linear-gradient(to right, rgba(255, 255, 255, 0.4), transparent 30%) 50% 50% / 97% 97%,
-    linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0.5),
-      transparent 50%,
-      transparent 80%,
-      rgba(255, 255, 255, 0.5)
-    )
-    50% 50% / 97% 97%;
-  background-repeat: no-repeat;
-}
+/* Not used — hidden */
+.tc-shine  { display: none; }
+.tc-shadow { display: none; }
 
-/* Shadow vignette (fades out when ON) */
-.tc-shadow {
-  transition: all 0.3s cubic-bezier(1, 0, 1, 1);
-  opacity: 1;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to right, transparent 60%, rgba(0, 0, 0, 0.85));
-  background-repeat: no-repeat;
-}
-
+/* ── Animations ─────────────────────────────────────────────────── */
 @keyframes tc-flicker {
-  0%   { opacity: 1; }
-  80%  { opacity: 0.75; }
-  100% { opacity: 1; }
+  0%   { opacity: 1;    }
+  65%  { opacity: 0.80; }
+  100% { opacity: 1;    }
 }
 
 @keyframes tc-light-off {
-  0%  { opacity: 1; }
-  80% { opacity: 0; }
+  0%   { opacity: 0.55; }
+  100% { opacity: 0;    }
 }
