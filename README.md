@@ -83,35 +83,7 @@ cd ../server
 npm install
 ```
 
-### 2. Configure environment variables
-
-**Client** — Copy `client/.env.example` to `client/.env`:
-
-```env
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-VITE_BACKEND_URL=http://localhost:5000
-VITE_PEERJS_HOST=0.peerjs.com
-VITE_PEERJS_PORT=443
-VITE_PEERJS_PATH=/
-```
-
-**Server** — Copy `server/.env.example` to `server/.env`:
-
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/tamilconnect
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your_project.iam.gserviceaccount.com
-CLIENT_URL=http://localhost:5173
-```
-
-### 3. Run the app
+### 2. Run the app
 
 ```bash
 # Terminal 1: Start backend
@@ -124,26 +96,6 @@ npm run dev
 ```
 
 Visit `http://localhost:5173` in your browser.
-
----
-
-## 🌐 Deployment
-
-### Frontend → Vercel
-1. Connect your GitHub repo to Vercel
-2. Set root directory to `client`
-3. Add all `VITE_*` environment variables in Vercel dashboard
-4. Deploy!
-
-### Backend → Render
-1. Connect your GitHub repo to Render
-2. Set root directory to `server`
-3. Set start command: `node index.js`
-4. Add all server environment variables
-5. Enable "Auto-deploy on push"
-
----
-
 ## 🎨 Design
 
 - **Color Palette**: Saffron (#FF6B00), Deep Red (#C0392B), Dark (#0A0A0F)
@@ -158,7 +110,3 @@ Visit `http://localhost:5173` in your browser.
 > _Coming soon — add screenshots of your deployed app here_
 
 ---
-
-## 📄 License
-
-MIT — Feel free to use and modify for your own projects.
