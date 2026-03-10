@@ -297,45 +297,59 @@ export default function Chat() {
   }, [])
 
   const startSearching = async () => {
+    // Stop any leftover tracks from a previous session before requesting new ones
+    stopMediaTracks()
+
+    let stream = null
     try {
-      // Use explicit video constraints so mobile browsers use the front camera
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
+      // First try with ideal front-camera constraints (important for mobile)
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         audio: true,
       })
-      localStreamRef.current = stream
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
-        safePlay(localVideoRef.current)
-      }
-
-      setStatus('searching')
-
-      const peerId = await waitForPeerId()
-      if (!peerId) {
-        toast.error('Connection not ready yet — please try again')
-        stopMediaTracks()
-        setStatus('idle')
+    } catch (err1) {
+      // OverconstrainedError or NotReadableError on desktop — fall back to plain request
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      } catch (err2) {
+        const msg = err2?.name === 'NotAllowedError'
+          ? 'Camera/mic permission was denied. Please allow access in your browser settings.'
+          : err2?.name === 'NotFoundError'
+          ? 'No camera or microphone found on this device.'
+          : err2?.name === 'NotReadableError'
+          ? 'Camera is already in use by another app. Close it and try again.'
+          : `Could not access camera/mic (${err2?.name || 'unknown error'})`
+        toast.error(msg)
         return
       }
+    }
 
-      if (socketRef.current) {
-        socketRef.current.emit('join-queue', {
-          peerId,
-          uid: user.uid,
-          language: profile?.language || 'Both',
-          interests: profile?.interests || [],
-          vibe,
-          district: profile?.district || null,
-          sameDistrict: sameDistrictMode,
-        })
-      }
-    } catch {
-      toast.error('Camera/mic permission is required')
+    localStreamRef.current = stream
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = stream
+      safePlay(localVideoRef.current)
+    }
+
+    setStatus('searching')
+
+    const peerId = await waitForPeerId()
+    if (!peerId) {
+      toast.error('Connection not ready yet — please try again')
+      stopMediaTracks()
+      setStatus('idle')
+      return
+    }
+
+    if (socketRef.current) {
+      socketRef.current.emit('join-queue', {
+        peerId,
+        uid: user.uid,
+        language: profile?.language || 'Both',
+        interests: profile?.interests || [],
+        vibe,
+        district: profile?.district || null,
+        sameDistrict: sameDistrictMode,
+      })
     }
   }
 

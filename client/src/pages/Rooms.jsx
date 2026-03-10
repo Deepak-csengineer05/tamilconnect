@@ -191,26 +191,41 @@ export default function Rooms() {
   const joinRoom = async room => {
     if (joining) return
     setJoining(room.key)
+    // Stop any leftover tracks first
+    stopMedia()
+    let stream = null
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         audio: true,
       })
-      localStreamRef.current = stream
-      setActiveRoom(room)
-      setMessages([])
-      setRemoteStreams({})
-      socketRef.current?.emit('join-public-room', {
-        roomKey: room.key,
-        peerId: peerIdRef.current,
-        uid: user.uid,
-        displayName: profile?.displayName || 'Anonymous',
-      })
     } catch {
-      toast.error('Camera & mic permission is required to join a room')
-    } finally {
-      setJoining(null)
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      } catch (err) {
+        const msg = err?.name === 'NotAllowedError'
+          ? 'Camera/mic permission was denied.'
+          : err?.name === 'NotReadableError'
+          ? 'Camera is in use by another app. Close it and try again.'
+          : err?.name === 'NotFoundError'
+          ? 'No camera/mic found on this device.'
+          : `Camera error: ${err?.name || 'unknown'}`
+        toast.error(msg)
+        setJoining(null)
+        return
+      }
     }
+    localStreamRef.current = stream
+    setActiveRoom(room)
+    setMessages([])
+    setRemoteStreams({})
+    socketRef.current?.emit('join-public-room', {
+      roomKey: room.key,
+      peerId: peerIdRef.current,
+      uid: user.uid,
+      displayName: profile?.displayName || 'Anonymous',
+    })
+    setJoining(null)
   }
 
   const leaveRoom = () => {
@@ -339,7 +354,76 @@ export default function Rooms() {
         </div>
       </div>
 
-      {/* Main content */}
+      {/* ── LOBBY: alone in room ── */}
+      {participants.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
+          {/* Local preview */}
+          <div className="relative w-56 h-40 sm:w-72 sm:h-52 rounded-2xl overflow-hidden border-2 border-[rgba(14,165,233,0.4)] shadow-xl shadow-[rgba(14,165,233,0.1)]">
+            <video
+              ref={localVideoRef}
+              autoPlay playsInline muted
+              className="w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)' }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2 text-xs font-medium text-white">
+              {profile?.displayName || 'You'} (You)
+            </div>
+          </div>
+
+          {/* Waiting text */}
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <span className="text-2xl">{activeRoom.emoji}</span>
+              <h2 className="text-white font-bold text-lg">{activeRoom.name}</h2>
+            </div>
+            <p className="text-slate-400 text-sm mb-1">You&apos;re the first one here!</p>
+            <p className="text-slate-500 text-xs">Waiting for others to join…</p>
+          </div>
+
+          {/* Pulsing dots */}
+          <div className="flex gap-2">
+            {[0,1,2].map(i => (
+              <div
+                key={i}
+                className="w-2.5 h-2.5 rounded-full bg-[#0EA5E9] animate-bounce"
+                style={{ animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
+          </div>
+
+          {/* Chat panel still available while waiting */}
+          <div className="w-full max-w-sm bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[rgba(14,165,233,0.1)]">
+              <MessageCircle size={14} className="text-[#0EA5E9]" />
+              <span className="text-xs font-medium text-white">Room Chat</span>
+              <span className="text-xs text-slate-600">(visible to everyone who joins)</span>
+            </div>
+            <div className="h-24 overflow-y-auto p-3 space-y-1">
+              {messages.length === 0 && <p className="text-slate-600 text-xs italic">No messages yet…</p>}
+              {messages.map((msg, i) => (
+                <div key={i} className="text-xs">
+                  <span className="text-[#38BDF8] font-medium">{msg.senderName}: </span>
+                  <span className="text-slate-300">{msg.message}</span>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+            <div className="p-2 border-t border-[rgba(14,165,233,0.1)] flex gap-2">
+              <input
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && sendMessage()}
+                placeholder="Say hi when they arrive…"
+                className="flex-1 bg-transparent border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-[#0EA5E9]"
+              />
+              <button onClick={sendMessage} className="w-8 h-8 rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#06B6D4] text-white flex items-center justify-center shrink-0">
+                <Send size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+      /* ── ACTIVE: other participants present ── */
       <div className="flex flex-col md:flex-row flex-1 min-h-0">
 
         {/* Video grid */}
@@ -432,6 +516,7 @@ export default function Rooms() {
         </div>
 
       </div>
+      )}
     </div>
   )
 }
