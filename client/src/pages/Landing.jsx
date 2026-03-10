@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Sparkles, Video, Shield, Languages, Zap, Heart, Users, MapPin, MessageSquare } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -30,6 +31,8 @@ const STEPS = [
 ]
 
 export default function Landing() {
+  const { isTeal } = useTheme()
+  const accentDot = isTeal ? 'rgba(45,212,191,0.4)' : 'rgba(14,165,233,0.4)'
   return (
     <div className="pt-16">
       {/* Hero */}
@@ -41,7 +44,7 @@ export default function Landing() {
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
-              backgroundImage: 'radial-gradient(rgba(14,165,233,0.4) 1px, transparent 1px)',
+              backgroundImage: `radial-gradient(${accentDot} 1px, transparent 1px)`,
               backgroundSize: '24px 24px',
             }}
           />

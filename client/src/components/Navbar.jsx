@@ -43,7 +43,9 @@ export default function Navbar() {
   const linkClass = (path) =>
     `px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
       isActive(path)
-        ? 'bg-[rgba(14,165,233,0.15)] text-[#38BDF8] border border-[rgba(14,165,233,0.3)]'
+        ? isTeal
+          ? 'bg-[rgba(45,212,191,0.15)] text-[#5EEAD4] border border-[rgba(45,212,191,0.3)]'
+          : 'bg-[rgba(14,165,233,0.15)] text-[#38BDF8] border border-[rgba(14,165,233,0.3)]'
         : 'text-slate-300 hover:text-white hover:bg-white/5'
     }`
 

@@ -19,7 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               style: {
                 background: 'rgba(3,15,30,0.95)',
                 color: '#f1f5f9',
-                border: '1px solid rgba(14,165,233,0.2)',
+                border: '1px solid var(--nav-border)',
                 backdropFilter: 'blur(12px)',
               },
             }}
