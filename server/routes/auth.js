@@ -51,11 +51,11 @@ router.get('/profile', verifyToken, async (req, res) => {
 // PUT /api/auth/profile — Update user profile
 router.put('/profile', verifyToken, async (req, res) => {
     try {
-        const { displayName, district, language, interests } = req.body;
+        const { displayName, district, language, interests, gender } = req.body;
 
         const user = await User.findOneAndUpdate(
             { uid: req.user.uid },
-            { displayName, district, language, interests },
+            { displayName, district, language, interests, gender },
             { new: true, runValidators: true }
         );
 

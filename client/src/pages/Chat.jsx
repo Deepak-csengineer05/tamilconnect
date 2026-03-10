@@ -269,6 +269,17 @@ export default function Chat() {
     localStreamRef.current = null
   }
 
+  // Waits up to 5 s for PeerJS to get an ID, then resolves (null on timeout)
+  const waitForPeerId = () => new Promise((resolve) => {
+    if (peerIdRef.current) { resolve(peerIdRef.current); return }
+    let elapsed = 0
+    const timer = setInterval(() => {
+      elapsed += 100
+      if (peerIdRef.current) { clearInterval(timer); resolve(peerIdRef.current) }
+      else if (elapsed >= 5000) { clearInterval(timer); resolve(null) }
+    }, 100)
+  })
+
   const resetToIdle = useCallback(() => {
     setStatus('idle')
     setPartnerInfo(null)
@@ -304,9 +315,17 @@ export default function Chat() {
 
       setStatus('searching')
 
-      if (socketRef.current && peerIdRef.current) {
+      const peerId = await waitForPeerId()
+      if (!peerId) {
+        toast.error('Connection not ready yet — please try again')
+        stopMediaTracks()
+        setStatus('idle')
+        return
+      }
+
+      if (socketRef.current) {
         socketRef.current.emit('join-queue', {
-          peerId: peerIdRef.current,
+          peerId,
           uid: user.uid,
           language: profile?.language || 'Both',
           interests: profile?.interests || [],

@@ -25,6 +25,7 @@ export default function Profile() {
   const [editName, setEditName] = useState('')
   const [editDistrict, setEditDistrict] = useState('')
   const [editLanguage, setEditLanguage] = useState('')
+  const [editGender, setEditGender] = useState('')
   const [localInterests, setLocalInterests] = useState([])
   const [savingInterests, setSavingInterests] = useState(false)
 
@@ -83,6 +84,7 @@ export default function Profile() {
     setEditName(profile.displayName)
     setEditDistrict(profile.district)
     setEditLanguage(profile.language)
+    setEditGender(profile.gender || '')
     setEditing(true)
   }
 
@@ -108,6 +110,7 @@ export default function Profile() {
           displayName: editName.trim(),
           district: editDistrict,
           language: editLanguage,
+          gender: editGender,
           interests: localInterests,
         }),
       })
@@ -358,6 +361,31 @@ export default function Profile() {
                     }`}
                   >
                     {lang.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-2 block">Gender</label>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { value: 'Male',   label: '👨 Male' },
+                  { value: 'Female', label: '👩 Female' },
+                  { value: 'Other',  label: '🧑 Other' },
+                ].map((g) => (
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => setEditGender(g.value)}
+                    className={`py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                      editGender === g.value
+                        ? 'bg-gradient-to-r from-[rgba(14,165,233,0.15)] to-[rgba(6,182,212,0.15)] border-[rgba(14,165,233,0.4)] text-[#38BDF8]'
+                        : 'border-[rgba(14,165,233,0.1)] text-slate-400 hover:border-[rgba(14,165,233,0.25)]'
+                    }`}
+                  >
+                    {g.label}
                   </button>
                 ))}
               </div>

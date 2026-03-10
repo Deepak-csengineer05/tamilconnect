@@ -25,7 +25,7 @@ export default function Rooms() {
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
   const [remoteStreams, setRemoteStreams] = useState({})
-  const [joining, setJoining] = useState(false)
+  const [joining, setJoining] = useState(null) // roomKey being joined, or null
 
   const socketRef = useRef(null)
   const peerRef = useRef(null)
@@ -190,7 +190,7 @@ export default function Rooms() {
 
   const joinRoom = async room => {
     if (joining) return
-    setJoining(true)
+    setJoining(room.key)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
@@ -209,7 +209,7 @@ export default function Rooms() {
     } catch {
       toast.error('Camera & mic permission is required to join a room')
     } finally {
-      setJoining(false)
+      setJoining(null)
     }
   }
 
@@ -279,14 +279,14 @@ export default function Rooms() {
                     </span>
                     <button
                       onClick={() => !full && joinRoom(room)}
-                      disabled={full || joining}
+                      disabled={full || joining === room.key}
                       className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                         full
                           ? 'bg-[rgba(14,165,233,0.05)] text-slate-600 border border-[rgba(14,165,233,0.1)] cursor-not-allowed'
                           : 'bg-gradient-to-r from-[#0EA5E9] to-[#06B6D4] text-white hover:shadow-lg hover:shadow-[rgba(14,165,233,0.25)]'
                       }`}
                     >
-                      {full ? 'Full' : joining ? 'Joining…' : 'Join'}
+                      {full ? 'Full' : joining === room.key ? 'Joining…' : 'Join'}
                     </button>
                   </div>
                 </motion.div>
