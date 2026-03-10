@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Video, User, LogOut } from 'lucide-react'
+import { Menu, X, Video, User, LogOut, Users } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 import toast from 'react-hot-toast'
 
@@ -78,6 +78,11 @@ export default function Navbar() {
                       <Video size={16} /> Chat
                     </span>
                   </Link>
+                  <Link to="/rooms" className={linkClass('/rooms')}>
+                    <span className="flex items-center gap-1.5">
+                      <Users size={16} /> Rooms
+                    </span>
+                  </Link>
                   <Link to="/profile" className={linkClass('/profile')}>
                     <span className="flex items-center gap-1.5">
                       <User size={16} /> Profile
@@ -139,6 +144,7 @@ export default function Navbar() {
                 {user ? (
                   <>
                     <Link to="/chat" onClick={() => setMenuOpen(false)} className={`block ${linkClass('/chat')}`}>Chat</Link>
+                    <Link to="/rooms" onClick={() => setMenuOpen(false)} className={`block ${linkClass('/rooms')}`}>Rooms</Link>
                     <Link to="/profile" onClick={() => setMenuOpen(false)} className={`block ${linkClass('/profile')}`}>Profile</Link>
                     <button onClick={() => { handleLogout(); setMenuOpen(false) }} className="w-full text-left px-4 py-2 rounded-lg text-red-400 hover:bg-red-400/10 text-sm">Logout</button>
                   </>

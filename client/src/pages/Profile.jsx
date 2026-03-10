@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { motion } from 'framer-motion'
-import { Edit3, Save, X, MapPin, Languages as LangIcon, MessageSquare, Sparkles, Plus } from 'lucide-react'
+import { Edit3, Save, X, MapPin, Languages as LangIcon, MessageSquare, Sparkles, Plus, UserCheck, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const DISTRICTS = [
@@ -28,6 +28,11 @@ export default function Profile() {
   const [localInterests, setLocalInterests] = useState([])
   const [savingInterests, setSavingInterests] = useState(false)
 
+  // Follows
+  const [follows, setFollows] = useState([])
+  const [followsLoading, setFollowsLoading] = useState(false)
+  const [showFollows, setShowFollows] = useState(false)
+
   useEffect(() => {
     fetchProfile()
   }, [])
@@ -48,6 +53,30 @@ export default function Profile() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchFollows = async () => {
+    setFollowsLoading(true)
+    try {
+      const token = await getToken()
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/follows`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFollows(data.follows || [])
+      }
+    } catch {
+      toast.error('Failed to load following list')
+    } finally {
+      setFollowsLoading(false)
+    }
+  }
+
+  const toggleFollowsPanel = () => {
+    const next = !showFollows
+    setShowFollows(next)
+    if (next && follows.length === 0) fetchFollows()
   }
 
   const startEditing = () => {
@@ -226,7 +255,7 @@ export default function Profile() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-5 text-center">
             <MessageSquare size={22} className="text-[#0EA5E9] mx-auto mb-2" />
             <p className="text-2xl font-bold text-white">{profile.chatCount || 0}</p>
@@ -237,7 +266,55 @@ export default function Profile() {
             <p className="text-2xl font-bold text-white">{localInterests.length}</p>
             <p className="text-xs text-slate-400 mt-0.5">Interests</p>
           </div>
+          <button
+            onClick={toggleFollowsPanel}
+            className="bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-5 text-center hover:border-[rgba(14,165,233,0.35)] transition-colors"
+          >
+            <Users size={22} className="text-[#38BDF8] mx-auto mb-2" />
+            <p className="text-2xl font-bold text-white">{profile.follows?.length || 0}</p>
+            <p className="text-xs text-slate-400 mt-0.5">Following</p>
+          </button>
         </div>
+
+        {/* Following panel */}
+        {showFollows && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-5"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <UserCheck size={16} className="text-[#38BDF8]" />
+              <h3 className="text-sm font-semibold text-white">People I Follow</h3>
+            </div>
+            {followsLoading ? (
+              <div className="space-y-3">
+                {[1,2].map(i => <div key={i} className="h-12 bg-[rgba(14,165,233,0.05)] rounded-xl animate-pulse" />)}
+              </div>
+            ) : follows.length === 0 ? (
+              <p className="text-slate-500 text-sm">You haven't followed anyone yet. Follow people during a chat!</p>
+            ) : (
+              <div className="space-y-2">
+                {follows.map((f) => (
+                  <div key={f.uid} className="flex items-center gap-3 p-3 rounded-xl bg-[rgba(14,165,233,0.04)] border border-[rgba(14,165,233,0.1)]">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0EA5E9] to-[#06B6D4] flex items-center justify-center text-sm font-bold text-white shrink-0">
+                      {f.displayName?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{f.displayName}</p>
+                      <p className="text-xs text-slate-400 truncate">{f.district} · {f.language}</p>
+                    </div>
+                    {f.gender && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-[rgba(14,165,233,0.1)] text-[#38BDF8] border border-[rgba(14,165,233,0.2)] shrink-0">
+                        {f.gender}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Details card — only shown when editing name/district/language */}
         {editing && (

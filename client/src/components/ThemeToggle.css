@@ -1,174 +1,149 @@
-/* ── Realistic 3D Rocker Switch ─────────────────────────────────── */
+/* -- Neumorphic Pill Toggle � dark navy � teal ------------------ */
+/* Adapted from uiverse.io/csemszepp                              */
 
-/* Housing — dark machined bezel with deep inset cavity */
-.tc-switch {
-  display: inline-block;
-  width: 60px;
-  height: 28px;
-  background: linear-gradient(155deg, #1c1c26 0%, #0e0e18 55%, #09090e 100%);
-  border-radius: 5px;
-  padding: 4px;
-  box-shadow:
-    /* outer drop */
-    0 6px 18px rgba(0,0,0,0.92),
-    0 2px 5px rgba(0,0,0,0.75),
-    /* top rim catch-light */
-    0 1px 0 rgba(255,255,255,0.07),
-    /* inner cavity recess */
-    inset 0 3px 9px rgba(0,0,0,1),
-    inset 0 1px 3px rgba(0,0,0,0.9),
-    inset 0 0 0 1px rgba(0,0,0,0.65);
-  perspective: 68px;
-  cursor: pointer;
-  user-select: none;
-  vertical-align: middle;
-  flex-shrink: 0;
+.tc-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --hue: 213deg;
+  --accent-hue: 185deg;
+  --width: 80px;
+  --duration: 0.5s;
+  --easing: cubic-bezier(1, 0, 1, 1);
 }
 
-.tc-switch input {
+.tc-togglesw {
   display: none;
 }
 
-/* ── Rocker button ───────────────────────────────────────────────── */
-.tc-btn {
-  display: block;
-  width: 100%;
-  height: 100%;
+/* -- Housing ---------------------------------------------------- */
+.tc-switch {
   position: relative;
-  transform-style: preserve-3d;
-  transform-origin: center center 0;
-  /* OFF — 0 (right) side raised: tilt right edge toward viewer */
-  transform: rotateY(-20deg);
-  transition:
-    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.18s ease;
-  border-radius: 2px;
   cursor: pointer;
-  /* Main face: top-edge specular + right side slightly brighter */
-  background:
-    linear-gradient(to bottom,
-      rgba(255,255,255,0.11) 0%,
-      rgba(255,255,255,0.04) 2px,
-      transparent 22%,
-      rgba(0,0,0,0.28) 100%),
-    linear-gradient(to right,
-      #020a14 0%,
-      #041120 38%,
-      #071b36 58%,
-      #0b2245 100%);
-  /* Right-edge raised highlight in OFF state */
+  display: flex;
+  align-items: center;
+  width: var(--width);
+  height: calc(var(--width) / 2.5);
+  border-radius: var(--width);
+  background: hsl(var(--hue) 70% 7%);
   box-shadow:
-    inset -1px 0 0 rgba(255,255,255,0.22),
-    inset -2px 0 6px rgba(60,130,230,0.12),
-    inset  2px 0 9px rgba(0,0,0,0.65),
-    inset  0  1px 0 rgba(255,255,255,0.09);
+    inset 3px  3px 6px  hsl(var(--hue) 80%  3%),
+    inset -3px -3px 6px hsl(var(--hue) 50% 14%);
+  user-select: none;
 }
 
-/* Left depth face — visible when right side is raised */
-.tc-btn::before {
-  content: "";
+/* -- Shared indicator ------------------------------------------- */
+.tc-indicator {
   position: absolute;
-  left: 0; top: 0;
-  width: 5px;
-  height: 100%;
-  transform-origin: left center;
-  transform: rotateY(-90deg);
-  background: linear-gradient(to bottom, #010608 0%, #020b16 50%, #010608 100%);
-}
-
-/* Right depth face — visible when left side is raised */
-.tc-btn::after {
-  content: "";
-  position: absolute;
-  right: 0; top: 0;
-  width: 5px;
-  height: 100%;
-  transform-origin: right center;
-  transform: rotateY(90deg);
-  background: linear-gradient(to bottom, #010608 0%, #020b16 50%, #010608 100%);
-}
-
-/* ── ON state — 1 (left) raised, teal lit ──────────────────────── */
-.tc-switch input:checked + .tc-btn {
-  transform: rotateY(20deg);
-  background:
-    linear-gradient(to bottom,
-      rgba(255,255,255,0.15) 0%,
-      rgba(255,255,255,0.05) 2px,
-      transparent 22%,
-      rgba(0,0,0,0.18) 100%),
-    linear-gradient(to right,
-      #00a87e 0%,
-      #00795c 38%,
-      #004f3c 58%,
-      #003228 100%);
+  width: 40%;
+  height: 60%;
+  transition: all var(--duration) var(--easing);
   box-shadow:
-    inset  1px 0 0 rgba(255,255,255,0.28),
-    inset  2px 0 7px rgba(45,212,191,0.22),
-    inset -2px 0 9px rgba(0,0,0,0.8),
-    inset  0  1px 0 rgba(255,255,255,0.13),
-    /* outer teal glow on left */
-    -3px 0 14px rgba(45,212,191,0.55),
-    -1px 0  6px rgba(45,212,191,0.35);
+    inset 0 0 2px hsl(var(--hue) 20%  5% / 60%),
+    inset 0 0 3px 2px hsl(var(--hue) 20%  5% / 60%),
+    inset 0 0 5px 2px hsl(var(--hue) 20% 20% / 60%);
 }
 
-.tc-switch input:checked + .tc-btn .tc-light {
-  animation: tc-flicker 0.25s infinite 0.2s;
-}
-
-/* ── Inner elements ─────────────────────────────────────────────── */
-
-/* Teal glow broadcast when ON */
-.tc-light {
-  opacity: 0;
-  animation: tc-light-off 0.8s forwards;
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse 65% 55% at 22% 50%,
-    rgba(150,240,222,0.65),
-    rgba(45,212,191,0.35) 45%,
-    transparent 72%
+/* -- Left � teal glow (lit when teal ON / checked) ------------- */
+.tc-left {
+  overflow: hidden;
+  left: 10%;
+  border-radius: 100px 0 0 100px;
+  background: linear-gradient(
+    180deg,
+    hsl(calc(var(--accent-hue) + 20deg) 90% 82%) 10%,
+    hsl(calc(var(--accent-hue) + 10deg) 95% 66%) 30%,
+    hsl(var(--accent-hue) 88% 50%)                60%,
+    hsl(var(--accent-hue) 88% 62%)                75%,
+    hsl(var(--accent-hue) 88% 50%)
   );
 }
 
-/* Fine dot texture */
-.tc-dots {
+.tc-left::after {
+  content: '';
   position: absolute;
-  inset: 0;
-  background-image: radial-gradient(transparent 28%, rgba(0,5,18,0.52) 72%);
-  background-size: 2.5px 2.5px;
+  opacity: 0.55;
+  width: 100%;
+  height: 100%;
 }
 
-/* Power symbols: | (1) left side, ○ (0) right side */
-.tc-chars {
+/* -- Right � dark slot (dim when dark mode is active) ---------- */
+.tc-right {
+  right: 10%;
+  border-radius: 0 100px 100px 0;
+  background-image: linear-gradient(
+    180deg,
+    hsl(var(--hue) 40% 18%),
+    hsl(var(--hue) 40% 10%) 60%,
+    hsl(var(--hue) 40% 13%) 70%,
+    hsl(var(--hue) 40% 10%)
+  );
+}
+
+/* -- Sliding button --------------------------------------------- */
+.tc-btn {
   position: absolute;
-  inset: 0;
-  background:
-    /* 1 — vertical bar */
-    linear-gradient(white, white) 27% 50% / 6% 36%,
-    /* 0 — open ring */
-    radial-gradient(circle,
-      transparent 47%,
-      white 49%, white 67%,
-      transparent 69%)
-    69% 50% / 30% 52%;
-  background-repeat: no-repeat;
-  opacity: 0.48;
+  z-index: 1;
+  width: 55%;
+  height: 80%;
+  left: 5%;
+  border-radius: 100px;
+  background-image: linear-gradient(
+    160deg,
+    hsl(var(--hue) 35% 19%) 40%,
+    hsl(var(--hue) 35% 10%) 70%
+  );
+  transition: all var(--duration) var(--easing);
+  box-shadow:
+    2px  2px  3px hsl(var(--hue) 60% 2% / 80%),
+    2px  2px  6px hsl(var(--hue) 60% 2% / 40%),
+    5px 10px  8px hsl(var(--hue) 60% 2% / 50%),
+    8px 15px 18px hsl(var(--hue) 60% 2% / 65%);
 }
 
-/* Not used — hidden */
-.tc-shine  { display: none; }
-.tc-shadow { display: none; }
-
-/* ── Animations ─────────────────────────────────────────────────── */
-@keyframes tc-flicker {
-  0%   { opacity: 1;    }
-  65%  { opacity: 0.80; }
-  100% { opacity: 1;    }
+/* Two raised nubs on button face */
+.tc-btn::before,
+.tc-btn::after {
+  content: '';
+  position: absolute;
+  top: 10%;
+  width: 41%;
+  height: 80%;
+  border-radius: 100%;
 }
 
-@keyframes tc-light-off {
-  0%   { opacity: 0.55; }
-  100% { opacity: 0;    }
+.tc-btn::before {
+  left: 5%;
+  box-shadow: inset 1px 1px 2px hsl(var(--hue) 20% 24%);
+  background-image: linear-gradient(
+    -50deg,
+    hsl(var(--hue) 30% 24%) 20%,
+    hsl(var(--hue) 30% 14%) 80%
+  );
+}
+
+.tc-btn::after {
+  right: 5%;
+  box-shadow: inset 1px 1px 3px hsl(var(--hue) 20% 14%);
+  background-image: linear-gradient(
+    -50deg,
+    hsl(var(--hue) 30% 20%) 20%,
+    hsl(var(--hue) 30% 11%) 80%
+  );
+}
+
+/* -- Checked (teal ON): button slides right -------------------- */
+.tc-togglesw:checked ~ .tc-btn {
+  left: 40%;
+}
+
+/* -- Suppressed / sunken indicator ---------------------------- */
+/* dark mode  ? left teal slot pressed hidden                    */
+/* teal mode  ? right dark slot pressed hidden                   */
+.tc-togglesw:not(:checked) ~ .tc-left,
+.tc-togglesw:checked       ~ .tc-right {
+  box-shadow:
+    inset 0 0 5px   hsl(var(--hue) 70%  1% / 100%),
+    inset 5px 5px 5px hsl(var(--hue) 70%  2% / 100%),
+    inset 5px 5px 8px hsl(var(--hue) 50%  4% / 100%);
 }

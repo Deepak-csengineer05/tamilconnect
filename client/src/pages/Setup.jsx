@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, MapPin, Languages, Sparkles, ChevronRight, ChevronLeft, Check, Search, X } from 'lucide-react'
+import { User, MapPin, Languages, Sparkles, ChevronRight, ChevronLeft, Check, Search, X, Smile } from 'lucide-react'
 import InterestTags from '../components/InterestTags'
 import toast from 'react-hot-toast'
 
@@ -16,8 +16,8 @@ const DISTRICTS = [
   'Viluppuram', 'Virudhunagar',
 ]
 
-const STEP_ICONS = [User, MapPin, Languages, Sparkles]
-const STEP_LABELS = ['Name', 'Location', 'Language', 'Interests']
+const STEP_ICONS = [User, Smile, MapPin, Languages, Sparkles]
+const STEP_LABELS = ['Name', 'Gender', 'Location', 'Language', 'Interests']
 
 export default function Setup() {
   const { getToken } = useAuth()
@@ -26,6 +26,7 @@ export default function Setup() {
   const [loading, setLoading] = useState(false)
 
   const [displayName, setDisplayName] = useState('')
+  const [gender, setGender] = useState('')
   const [district, setDistrict] = useState('')
   const [language, setLanguage] = useState('')
   const [interests, setInterests] = useState([])
@@ -34,9 +35,10 @@ export default function Setup() {
 
   const canProceed = () => {
     if (step === 0) return displayName.trim().length > 0
-    if (step === 1) return district !== ''
-    if (step === 2) return language !== ''
-    if (step === 3) return interests.length > 0
+    if (step === 1) return gender !== ''
+    if (step === 2) return district !== ''
+    if (step === 3) return language !== ''
+    if (step === 4) return interests.length > 0
     return false
   }
 
@@ -45,7 +47,7 @@ export default function Setup() {
       toast.error('Please complete this step')
       return
     }
-    if (step < 3) setStep(step + 1)
+    if (step < 4) setStep(step + 1)
   }
 
   const handleBack = () => {
@@ -66,7 +68,7 @@ export default function Setup() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ displayName: displayName.trim(), district, language, interests }),
+        body: JSON.stringify({ displayName: displayName.trim(), gender, district, language, interests }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Setup failed')
@@ -79,7 +81,7 @@ export default function Setup() {
     }
   }
 
-  const progressWidth = `${((step + 1) / 4) * 100}%`
+  const progressWidth = `${((step + 1) / 5) * 100}%`
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 pt-20 pb-10">
@@ -93,14 +95,14 @@ export default function Setup() {
 
           <div className="p-8">
             <h2 className="text-2xl font-bold text-white text-center mb-1">Set Up Your Profile</h2>
-            <p className="text-slate-400 text-sm text-center mb-8">Step {step + 1} of 4</p>
+            <p className="text-slate-400 text-sm text-center mb-8">Step {step + 1} of 5</p>
 
             {/* Step indicators */}
-            <div className="flex items-center justify-center gap-4 mb-6">
+            <div className="flex items-center justify-center gap-3 mb-6">
               {STEP_ICONS.map((Icon, i) => (
                 <div
                   key={i}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
                     i < step
                       ? 'bg-gradient-to-br from-[#0EA5E9] to-[#06B6D4] text-white'
                       : i === step
@@ -108,7 +110,7 @@ export default function Setup() {
                       : 'border border-[rgba(14,165,233,0.15)] text-slate-600'
                   }`}
                 >
-                  {i < step ? <Check size={18} /> : <Icon size={18} />}
+                  {i < step ? <Check size={16} /> : <Icon size={16} />}
                 </div>
               ))}
             </div>
@@ -147,6 +149,33 @@ export default function Setup() {
 
                 {step === 1 && (
                   <div className="space-y-4">
+                    <label className="block text-sm font-medium text-slate-300">How do you identify?</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { value: 'Male',              label: '♂ Male' },
+                        { value: 'Female',            label: '♀ Female' },
+                        { value: 'Non-binary',        label: '⚧ Non-binary' },
+                        { value: 'Prefer not to say', label: '🤐 Prefer not to say' },
+                      ].map((g) => (
+                        <button
+                          key={g.value}
+                          type="button"
+                          onClick={() => setGender(g.value)}
+                          className={`py-3 rounded-xl border text-sm font-medium transition-all ${
+                            gender === g.value
+                              ? 'bg-gradient-to-r from-[rgba(14,165,233,0.15)] to-[rgba(6,182,212,0.15)] border-[rgba(14,165,233,0.4)] text-[#38BDF8]'
+                              : 'border-[rgba(14,165,233,0.1)] text-slate-400 hover:border-[rgba(14,165,233,0.25)]'
+                          }`}
+                        >
+                          {g.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {step === 2 && (
+                  <div className="space-y-4">
                     <label className="block text-sm font-medium text-slate-300">Which district are you from?</label>
 
                     {/* Trigger button */}
@@ -178,7 +207,7 @@ export default function Setup() {
                   </div>
                 )}
 
-                {step === 2 && (
+                {step === 3 && (
                   <div className="space-y-4">
                     <label className="block text-sm font-medium text-slate-300">Preferred chat language</label>
                     <div className="grid grid-cols-3 gap-3">
@@ -204,7 +233,7 @@ export default function Setup() {
                   </div>
                 )}
 
-                {step === 3 && (
+                {step === 4 && (
                   <div className="space-y-4">
                     <label className="block text-sm font-medium text-slate-300">Pick your interests</label>
                     <InterestTags selected={interests} onChange={setInterests} />
@@ -223,7 +252,7 @@ export default function Setup() {
                   <ChevronLeft size={16} /> Back
                 </button>
               )}
-              {step < 3 ? (
+              {step < 4 ? (
                 <button
                   onClick={handleNext}
                   disabled={!canProceed()}

@@ -6,7 +6,7 @@ const verifyToken = require('../middleware/verifyToken');
 // POST /api/auth/setup — Create or update user profile after setup
 router.post('/setup', verifyToken, async (req, res) => {
     try {
-        const { displayName, district, language, interests } = req.body;
+        const { displayName, district, language, interests, gender } = req.body;
         const { uid, email, picture } = req.user;
 
         const user = await User.findOneAndUpdate(
@@ -19,6 +19,7 @@ router.post('/setup', verifyToken, async (req, res) => {
                 district,
                 language,
                 interests,
+                gender: gender || '',
                 setupComplete: true,
             },
             { upsert: true, new: true, runValidators: true }
@@ -86,6 +87,69 @@ router.post('/increment-chat', verifyToken, async (req, res) => {
     } catch (error) {
         console.error('Chat increment error:', error.message);
         res.status(500).json({ error: 'Failed to increment chat count' });
+    }
+});
+
+// POST /api/auth/follow/:targetUid — Follow a user
+router.post('/follow/:targetUid', verifyToken, async (req, res) => {
+    try {
+        const { uid } = req.user;
+        const { targetUid } = req.params;
+
+        if (uid === targetUid) {
+            return res.status(400).json({ error: 'Cannot follow yourself' });
+        }
+
+        const targetExists = await User.exists({ uid: targetUid });
+        if (!targetExists) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        await User.findOneAndUpdate(
+            { uid },
+            { $addToSet: { follows: targetUid } }
+        );
+
+        res.status(200).json({ message: 'Followed successfully' });
+    } catch (error) {
+        console.error('Follow error:', error.message);
+        res.status(500).json({ error: 'Failed to follow user' });
+    }
+});
+
+// DELETE /api/auth/follow/:targetUid — Unfollow a user
+router.delete('/follow/:targetUid', verifyToken, async (req, res) => {
+    try {
+        const { uid } = req.user;
+        const { targetUid } = req.params;
+
+        await User.findOneAndUpdate(
+            { uid },
+            { $pull: { follows: targetUid } }
+        );
+
+        res.status(200).json({ message: 'Unfollowed successfully' });
+    } catch (error) {
+        console.error('Unfollow error:', error.message);
+        res.status(500).json({ error: 'Failed to unfollow user' });
+    }
+});
+
+// GET /api/auth/follows — Get list of users I follow
+router.get('/follows', verifyToken, async (req, res) => {
+    try {
+        const me = await User.findOne({ uid: req.user.uid }).lean();
+        if (!me) return res.status(404).json({ error: 'User not found' });
+
+        const followedUsers = await User.find(
+            { uid: { $in: me.follows || [] } },
+            'uid displayName district language interests gender'
+        ).lean();
+
+        res.status(200).json({ follows: followedUsers, count: followedUsers.length });
+    } catch (error) {
+        console.error('Follows fetch error:', error.message);
+        res.status(500).json({ error: 'Failed to fetch follows' });
     }
 });
 

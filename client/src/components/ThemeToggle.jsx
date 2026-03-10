@@ -5,18 +5,16 @@ export default function ThemeToggle() {
   const { isTeal, toggleTheme } = useTheme()
 
   return (
-    <label
-      className="tc-switch"
+    <div
+      className="tc-container"
       title={isTeal ? 'Switch to Dark theme' : 'Switch to Teal theme'}
     >
-      <input type="checkbox" checked={isTeal} onChange={toggleTheme} />
-      <div className="tc-btn">
-        <div className="tc-light" />
-        <div className="tc-dots" />
-        <div className="tc-chars" />
-        <div className="tc-shine" />
-        <div className="tc-shadow" />
-      </div>
-    </label>
+      <label className="tc-switch">
+        <input className="tc-togglesw" type="checkbox" checked={isTeal} onChange={toggleTheme} />
+        <div className="tc-indicator tc-left"></div>
+        <div className="tc-indicator tc-right"></div>
+        <div className="tc-btn"></div>
+      </label>
+    </div>
   )
 }

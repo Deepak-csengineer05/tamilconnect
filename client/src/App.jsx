@@ -8,6 +8,7 @@ import Register from './pages/Register'
 import Setup from './pages/Setup'
 import Chat from './pages/Chat'
 import Profile from './pages/Profile'
+import Rooms from './pages/Rooms'
 
 const pageTransition = {
   initial: { opacity: 0, y: 12 },
@@ -109,6 +110,16 @@ export default function App() {
               <PrivateRoute>
                 <PageWrapper>
                   <Profile />
+                </PageWrapper>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/rooms"
+            element={
+              <PrivateRoute>
+                <PageWrapper>
+                  <Rooms />
                 </PageWrapper>
               </PrivateRoute>
             }

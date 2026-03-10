@@ -1,25 +1,23 @@
 const User = require('../models/User');
 
 /**
- * Smart Matchmaking Algorithm
- * 
- * How it works:
- * 1. User joins queue with their peerId, uid, language, and interests
- * 2. Server tries to find the best match based on:
- *    a. Shared interests (highest priority — more shared interests = better match)
- *    b. Language compatibility (Tamil+Tamil, English+English, Both+anything)
- *    c. Fallback: after 15 seconds, match with any available user
- * 3. When matched, both users join a Socket.io room for text chat
- * 4. PeerJS IDs are exchanged for WebRTC video connection
- */
-
-/**
  * Smart Matchmaking Algorithm — 3-tier fallback
  *
  * Tier 1 (instant):   Smart match — shared interests + language compatibility
  * Tier 2 (5 seconds): Relaxed match — language compatible, any interests
  * Tier 3 (10 seconds): Anyone online — pure Omegle-style, no filters
+ *
+ * ─── Free-Tier Capacity (Render 512 MB RAM) ──────────────────────
+ * Since all video/audio is P2P (WebRTC), this server only handles
+ * signaling (socket events + matchmaking). Memory footprint per
+ * connection is ~8–15 KB. The binding constraint is shared CPU (0.1 vCPU).
+ *
+ * Safe concurrent limit: MAX_CONNECTIONS = 100
+ * Beyond that, new connections are rejected with 'server-full'.
+ * ─────────────────────────────────────────────────────────────────
  */
+
+const MAX_CONNECTIONS = 100; // safe ceiling for 512 MB / 0.1 vCPU free tier
 
 // Waiting queue: Map<socketId, { socketId, peerId, uid, language, interests, joinedAt }>
 const waitingQueue = new Map();
@@ -55,6 +53,17 @@ function calculateMatchScore(user1, user2) {
     const shared = user1.interests.filter(i => user2.interests.includes(i));
     score += shared.length * 2;
 
+    // Vibe Mode: same vibe = strong bonus
+    if (user1.vibe && user2.vibe && user1.vibe === user2.vibe) {
+        score += 4;
+    }
+
+    // Same District Mode: only applies when both users opted in
+    if (user1.sameDistrict && user2.sameDistrict &&
+        user1.district && user1.district === user2.district) {
+        score += 10;
+    }
+
     return score;
 }
 
@@ -89,9 +98,44 @@ function findBestMatch(user, mode = 'smart') {
     return bestMatch;
 }
 
+// ── Public Group Rooms ────────────────────────────────────────────────────
+const MAX_ROOM_SIZE = 6;
+const PUBLIC_ROOM_DEFS = [
+    { key: 'csk-fans',   name: 'CSK Fan Room',        emoji: '🏏' },
+    { key: 'kollywood',  name: 'Kollywood Discussion', emoji: '🎬' },
+    { key: 'food-tn',    name: 'Food Lovers TN',       emoji: '🍛' },
+    { key: 'tech-tamil', name: 'Tech Tamil',           emoji: '💻' },
+    { key: 'music-jam',  name: 'Music Jam',            emoji: '🎵' },
+];
+// publicRoomMap: roomKey -> [{socketId, peerId, uid, displayName}]
+const publicRoomMap = new Map();
+PUBLIC_ROOM_DEFS.forEach(r => publicRoomMap.set(r.key, []));
+// socketPublicRoomMap: socketId -> roomKey
+const socketPublicRoomMap = new Map();
+
+function getRoomCounts() {
+    const counts = {};
+    for (const [key, ps] of publicRoomMap) counts[key] = ps.length;
+    return counts;
+}
+
 function initializeSocket(io) {
     io.on('connection', (socket) => {
-        console.log(`User connected: ${socket.id}`);
+        // ── Enforce connection cap ─────────────────────────────────
+        const currentCount = io.sockets.sockets.size;
+        if (currentCount > MAX_CONNECTIONS) {
+            socket.emit('server-full', { max: MAX_CONNECTIONS });
+            socket.disconnect(true);
+            return;
+        }
+
+        console.log(`User connected: ${socket.id} (${currentCount}/${MAX_CONNECTIONS})`);
+
+        // Broadcast updated online count to all connected clients
+        io.emit('online-count', currentCount);
+
+        // Send current public room counts to this client
+        socket.emit('room-counts', getRoomCounts());
 
         /**
          * Event: join-queue
@@ -99,7 +143,7 @@ function initializeSocket(io) {
          * Data: { peerId, uid, language, interests }
          */
         socket.on('join-queue', async (data) => {
-            const { peerId, uid, language, interests } = data;
+            const { peerId, uid, language, interests, vibe, district, sameDistrict } = data;
 
             socketUserMap.set(socket.id, uid);
 
@@ -109,6 +153,9 @@ function initializeSocket(io) {
                 uid,
                 language: language || 'Both',
                 interests: interests || [],
+                vibe: vibe || null,
+                district: district || null,
+                sameDistrict: sameDistrict || false,
                 joinedAt: Date.now(),
             };
 
@@ -249,7 +296,8 @@ function initializeSocket(io) {
                         ? room.user2SocketId
                         : room.user1SocketId;
 
-                    io.to(partnerId).emit('partner-skipped');
+                    // Ghost Mode: partner sees "connection lost", never "you were skipped"
+                    io.to(partnerId).emit('partner-disconnected');
 
                     // Clean up the room
                     socket.leave(roomId);
@@ -318,6 +366,77 @@ function initializeSocket(io) {
             }
 
             socketUserMap.delete(socket.id);
+
+            // Clean up public room if user was in one
+            const pubRoomKey = socketPublicRoomMap.get(socket.id);
+            if (pubRoomKey) {
+                const ps = publicRoomMap.get(pubRoomKey) || [];
+                const leaving = ps.find(p => p.socketId === socket.id);
+                publicRoomMap.set(pubRoomKey, ps.filter(p => p.socketId !== socket.id));
+                socketPublicRoomMap.delete(socket.id);
+                if (leaving) {
+                    io.to(`pub_${pubRoomKey}`).emit('room-peer-left', {
+                        peerId: leaving.peerId,
+                        displayName: leaving.displayName,
+                    });
+                }
+                io.emit('room-counts', getRoomCounts());
+            }
+
+            // Broadcast updated online count (after cleanup)
+            io.emit('online-count', io.sockets.sockets.size);
+        });
+
+        // ── Public Group Room Handlers ─────────────────────────────────────
+        socket.on('get-room-counts', () => {
+            socket.emit('room-counts', getRoomCounts());
+        });
+
+        socket.on('join-public-room', ({ roomKey, peerId, uid, displayName }) => {
+            const ps = publicRoomMap.get(roomKey);
+            if (!ps) return;
+            if (ps.length >= MAX_ROOM_SIZE) { socket.emit('room-full'); return; }
+
+            const participant = { socketId: socket.id, peerId, uid, displayName };
+            ps.push(participant);
+            socketPublicRoomMap.set(socket.id, roomKey);
+            socket.join(`pub_${roomKey}`);
+
+            // Send current participants to the new joiner (exclude self)
+            socket.emit('room-state', {
+                room: roomKey,
+                participants: ps.filter(p => p.socketId !== socket.id),
+            });
+            // Notify others that someone joined
+            socket.to(`pub_${roomKey}`).emit('room-peer-joined', { participant });
+            io.emit('room-counts', getRoomCounts());
+        });
+
+        socket.on('leave-public-room', () => {
+            const roomKey = socketPublicRoomMap.get(socket.id);
+            if (!roomKey) return;
+            const ps = publicRoomMap.get(roomKey) || [];
+            const leaving = ps.find(p => p.socketId === socket.id);
+            publicRoomMap.set(roomKey, ps.filter(p => p.socketId !== socket.id));
+            socket.leave(`pub_${roomKey}`);
+            socketPublicRoomMap.delete(socket.id);
+            if (leaving) {
+                io.to(`pub_${roomKey}`).emit('room-peer-left', {
+                    peerId: leaving.peerId,
+                    displayName: leaving.displayName,
+                });
+            }
+            io.emit('room-counts', getRoomCounts());
+        });
+
+        socket.on('room-message', ({ roomKey, message, senderName }) => {
+            if (!publicRoomMap.has(roomKey)) return;
+            io.to(`pub_${roomKey}`).emit('room-message', {
+                message,
+                senderName,
+                senderId: socket.id,
+                timestamp: Date.now(),
+            });
         });
     });
 }

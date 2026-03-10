@@ -5,11 +5,20 @@ import { io } from 'socket.io-client'
 import Peer from 'peerjs'
 import {
   Mic, MicOff, Video, VideoOff, SkipForward, PhoneOff, Flag, Search, MessageCircle,
+  UserPlus, UserCheck, Users, MapPin,
 } from 'lucide-react'
 import VideoBox from '../components/VideoBox'
 import TextChat from '../components/TextChat'
 import ReportModal from '../components/ReportModal'
 import toast from 'react-hot-toast'
+
+const VIBES = [
+  { key: 'fun',     emoji: '😂', label: 'Just Fun' },
+  { key: 'deep',    emoji: '🗣️', label: 'Deep Talk' },
+  { key: 'music',   emoji: '🎵', label: 'Music' },
+  { key: 'study',   emoji: '📚', label: 'Study' },
+  { key: 'cricket', emoji: '🏏', label: 'Cricket' },
+]
 
 export default function Chat() {
   const { user, getToken } = useAuth()
@@ -20,6 +29,7 @@ export default function Chat() {
   const [partnerInfo, setPartnerInfo] = useState(null)
   const [partnerUid, setPartnerUid] = useState(null)
   const [roomId, setRoomId] = useState(null)
+  const [onlineCount, setOnlineCount] = useState(0)
 
   // Media states
   const [micOn, setMicOn] = useState(true)
@@ -30,6 +40,26 @@ export default function Chat() {
   const [messages, setMessages] = useState([])
   const [reportOpen, setReportOpen] = useState(false)
   const [remoteHasStream, setRemoteHasStream] = useState(false)
+
+  // Follow states
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
+
+  // Vibe + matchmaking preferences
+  const [vibe, setVibe] = useState(null)
+  const [sameDistrictMode, setSameDistrictMode] = useState(false)
+
+  // Mask — blur partner's face until user taps Reveal
+  const [partnerBlurred, setPartnerBlurred] = useState(true)
+  const blurTimerRef = useRef(null)
+
+  // Auto-reveal partner's face after 4 seconds
+  useEffect(() => {
+    if (partnerBlurred) {
+      blurTimerRef.current = setTimeout(() => setPartnerBlurred(false), 4000)
+    }
+    return () => clearTimeout(blurTimerRef.current)
+  }, [partnerBlurred])
 
   // Refs
   const socketRef = useRef(null)
@@ -71,6 +101,7 @@ export default function Chat() {
       setPartnerUid(data.partnerUid)
       setRoomId(data.roomId)
       setMessages([])
+      setPartnerBlurred(true)
 
       if (data.matchType === 'smart') {
         toast.success('Matched by shared interests!')
@@ -127,6 +158,14 @@ export default function Chat() {
 
     socket.on('partner-typing', (data) => {
       setPartnerTyping(data.isTyping)
+    })
+
+    socket.on('online-count', (count) => {
+      setOnlineCount(count)
+    })
+
+    socket.on('server-full', () => {
+      toast.error('Server is at capacity. Please try again in a few minutes.')
     })
 
     return () => {
@@ -217,6 +256,8 @@ export default function Chat() {
 
   const safePlay = (videoEl) => {
     if (!videoEl) return
+    // load() is required on some mobile browsers before play() works after srcObject change
+    videoEl.load()
     const p = videoEl.play()
     if (p !== undefined) {
       p.catch(() => {})
@@ -235,6 +276,9 @@ export default function Chat() {
     setRoomId(null)
     setMessages([])
     setRemoteHasStream(false)
+    setIsFollowing(false)
+    setFollowLoading(false)
+    setPartnerBlurred(true)
     remoteStreamRef.current = null
     currentCallRef.current?.close()
     currentCallRef.current = null
@@ -243,7 +287,15 @@ export default function Chat() {
 
   const startSearching = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      // Use explicit video constraints so mobile browsers use the front camera
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+        audio: true,
+      })
       localStreamRef.current = stream
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream
@@ -258,6 +310,9 @@ export default function Chat() {
           uid: user.uid,
           language: profile?.language || 'Both',
           interests: profile?.interests || [],
+          vibe,
+          district: profile?.district || null,
+          sameDistrict: sameDistrictMode,
         })
       }
     } catch {
@@ -281,6 +336,8 @@ export default function Chat() {
     setPartnerUid(null)
     setRoomId(null)
     setMessages([])
+    setRemoteHasStream(false)
+    setIsFollowing(false)
     setStatus('searching')
 
     // Re-join queue
@@ -290,6 +347,9 @@ export default function Chat() {
         uid: user.uid,
         language: profile?.language || 'Both',
         interests: profile?.interests || [],
+        vibe,
+        district: profile?.district || null,
+        sameDistrict: sameDistrictMode,
       })
     }
   }
@@ -335,6 +395,28 @@ export default function Chat() {
     skipPartner()
   }
 
+  const followPartner = async () => {
+    if (!partnerUid || followLoading || isFollowing) return
+    setFollowLoading(true)
+    try {
+      const token = await getToken()
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/follow/${partnerUid}`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (res.ok) {
+        setIsFollowing(true)
+        toast.success(`Now following ${partnerInfo?.displayName || 'this person'}!`)
+      } else {
+        toast.error('Could not follow. Try again.')
+      }
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setFollowLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen pt-16">
       <AnimatePresence mode="wait">
@@ -358,6 +440,16 @@ export default function Chat() {
 
             <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Ready to Chat?</h2>
 
+            {/* Online count pill */}
+            <div className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.2)]">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-sm text-green-300 font-medium flex items-center gap-1.5">
+                <Users size={13} />
+                {onlineCount > 0 ? `${onlineCount} online now` : 'Connecting...'}
+              </span>
+              <span className="text-xs text-green-600">· free tier · max 100</span>
+            </div>
+
             {profile && (
               <div className="flex items-center gap-3 mb-6 flex-wrap justify-center">
                 <span className="text-sm text-slate-400">{profile.displayName}</span>
@@ -368,6 +460,41 @@ export default function Chat() {
                   {profile.district}
                 </span>
               </div>
+            )}
+
+            {/* Vibe picker */}
+            <div className="mb-4 w-full max-w-sm px-4">
+              <p className="text-xs text-slate-500 text-center mb-2">Your vibe right now <span className="opacity-50">(optional)</span></p>
+              <div className="flex gap-2 justify-center flex-wrap">
+                {VIBES.map(v => (
+                  <button
+                    key={v.key}
+                    onClick={() => setVibe(vibe === v.key ? null : v.key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all flex items-center gap-1 ${
+                      vibe === v.key
+                        ? 'bg-[rgba(14,165,233,0.2)] border-[rgba(14,165,233,0.5)] text-[#38BDF8]'
+                        : 'border-[rgba(14,165,233,0.1)] text-slate-500 hover:border-[rgba(14,165,233,0.3)] hover:text-slate-300'
+                    }`}
+                  >
+                    <span>{v.emoji}</span><span>{v.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Same district toggle */}
+            {profile?.district && (
+              <button
+                onClick={() => setSameDistrictMode(!sameDistrictMode)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm border transition-all mb-5 ${
+                  sameDistrictMode
+                    ? 'bg-[rgba(14,165,233,0.12)] border-[rgba(14,165,233,0.4)] text-[#38BDF8]'
+                    : 'border-[rgba(14,165,233,0.1)] text-slate-500 hover:border-[rgba(14,165,233,0.3)] hover:text-slate-300'
+                }`}
+              >
+                <MapPin size={14} />
+                {sameDistrictMode ? `${profile.district} only` : 'Any district'}
+              </button>
             )}
 
             <motion.button
@@ -438,18 +565,60 @@ export default function Chat() {
               {/* Remote video section — top ~60% on mobile, full area on desktop */}
               <div className="flex-[3] min-h-0 relative md:absolute md:inset-0">
                 {/* Connected badge */}
-                <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 bg-[rgba(3,15,30,0.8)] backdrop-blur-sm rounded-full px-3 py-1.5 border border-[rgba(34,197,94,0.3)]">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-xs font-medium text-green-300">Connected</span>
+                <div className="absolute top-3 left-3 z-10 flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 bg-[rgba(3,15,30,0.8)] backdrop-blur-sm rounded-full px-3 py-1.5 border border-[rgba(34,197,94,0.3)]">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-xs font-medium text-green-300">Connected</span>
+                  </div>
+                  {/* Follow button */}
+                  <button
+                    onClick={followPartner}
+                    disabled={followLoading || isFollowing}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium backdrop-blur-sm border transition-all ${
+                      isFollowing
+                        ? 'bg-[rgba(14,165,233,0.25)] border-[rgba(14,165,233,0.5)] text-[#38BDF8]'
+                        : 'bg-[rgba(3,15,30,0.8)] border-[rgba(14,165,233,0.3)] text-slate-300 hover:text-[#38BDF8] hover:border-[rgba(14,165,233,0.5)]'
+                    } disabled:opacity-60`}
+                  >
+                    {isFollowing
+                      ? <><UserCheck size={12} /> Following</>
+                      : followLoading
+                        ? 'Following...'
+                        : <><UserPlus size={12} /> Follow</>
+                    }
+                  </button>
                 </div>
 
-                <VideoBox
-                  ref={remoteVideoRef}
-                  label={partnerInfo?.displayName}
-                  language={partnerInfo?.language}
-                  interests={partnerInfo?.interests}
-                  muted={false}
-                />
+                {/* Blur wrapper — applied until user taps Reveal */}
+                <div
+                  className="w-full h-full"
+                  style={{ filter: partnerBlurred ? 'blur(18px) saturate(0.4)' : 'none', transition: 'filter 0.4s ease' }}
+                >
+                  <VideoBox
+                    ref={remoteVideoRef}
+                    label={partnerInfo?.displayName}
+                    language={partnerInfo?.language}
+                    interests={partnerInfo?.interests}
+                    muted={false}
+                    hasStream={remoteHasStream}
+                  />
+                </div>
+                {/* Reveal overlay */}
+                {partnerBlurred && (
+                  <div className="absolute inset-0 z-[15] flex items-center justify-center">
+                    <div className="bg-[rgba(3,15,30,0.88)] backdrop-blur-sm rounded-2xl p-5 text-center border border-[rgba(14,165,233,0.2)]">
+                      <div className="text-4xl mb-2">👻</div>
+                      <p className="text-white text-sm font-semibold mb-1">Face masked</p>
+                      <p className="text-slate-400 text-xs mb-3">Auto-revealing in a moment…</p>
+                      <button
+                        onClick={() => { clearTimeout(blurTimerRef.current); setPartnerBlurred(false) }}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#06B6D4] text-white text-xs font-semibold hover:shadow-lg hover:shadow-[rgba(14,165,233,0.3)] transition-all"
+                      >
+                        ✨ Reveal Face
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Controls bar — inside remote section so it floats above local on mobile */}
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-[rgba(3,15,30,0.85)] backdrop-blur-xl border border-[rgba(14,165,233,0.15)] rounded-2xl px-3 py-2.5">

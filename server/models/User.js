@@ -49,6 +49,12 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    gender: {
+        type: String,
+        enum: ['Male', 'Female', 'Non-binary', 'Prefer not to say', ''],
+        default: '',
+    },
+    follows: [{ type: String }], // array of uids this user follows
 }, {
     timestamps: true,
 });
