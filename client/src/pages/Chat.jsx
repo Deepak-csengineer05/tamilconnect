@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { io } from 'socket.io-client'
 import Peer from 'peerjs'
 import {
-  Mic, MicOff, Video, VideoOff, SkipForward, PhoneOff, Flag, Search,
+  Mic, MicOff, Video, VideoOff, SkipForward, PhoneOff, Flag, Search, MessageCircle,
 } from 'lucide-react'
 import VideoBox from '../components/VideoBox'
 import TextChat from '../components/TextChat'
@@ -25,6 +25,7 @@ export default function Chat() {
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
   const [chatOpen, setChatOpen] = useState(false)
+  const [chatPanelOpen, setChatPanelOpen] = useState(true)
   const [messages, setMessages] = useState([])
   const [reportOpen, setReportOpen] = useState(false)
 
@@ -470,12 +471,27 @@ export default function Chat() {
             </div>
 
             {/* Desktop text chat */}
-            <div className="hidden md:block">
-              <TextChat
-                messages={messages}
-                onSendMessage={sendMessage}
-                isOpen={true}
-              />
+            <div className="hidden md:flex">
+              {chatPanelOpen ? (
+                <TextChat
+                  messages={messages}
+                  onSendMessage={sendMessage}
+                  isOpen={true}
+                  onToggle={() => setChatPanelOpen(false)}
+                />
+              ) : (
+                <button
+                  onClick={() => setChatPanelOpen(true)}
+                  className="w-12 h-full flex flex-col items-center justify-center gap-2 bg-[rgba(3,15,30,0.8)] border-l border-[rgba(14,165,233,0.15)] text-slate-400 hover:text-[#0EA5E9] transition-colors"
+                >
+                  <MessageCircle size={20} />
+                  {messages.filter((m) => !m.isOwn).length > 0 && (
+                    <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      {messages.filter((m) => !m.isOwn).length > 9 ? '9+' : messages.filter((m) => !m.isOwn).length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Mobile text chat */}

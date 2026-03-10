@@ -15,9 +15,10 @@ const VideoBox = forwardRef(function VideoBox(
       >
         <video
           ref={ref}
+          autoPlay
           playsInline
-          muted={muted}
-          className="w-full h-full object-cover mirror"
+          muted
+          className="w-full h-full object-cover"
           style={{ transform: 'scaleX(-1)' }}
         />
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5">
@@ -35,6 +36,7 @@ const VideoBox = forwardRef(function VideoBox(
     >
       <video
         ref={ref}
+        autoPlay
         playsInline
         muted={muted}
         className="w-full h-full object-cover"

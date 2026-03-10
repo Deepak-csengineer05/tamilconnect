@@ -59,7 +59,7 @@ export default function TextChat({ messages, onSendMessage, isOpen, onToggle }) 
                 <MessageCircle size={16} className="text-[#0EA5E9]" />
                 Text Chat
               </h3>
-              <button onClick={onToggle} className="md:hidden p-1 rounded text-slate-400 hover:text-white">
+              <button onClick={onToggle} className="p-1 rounded text-slate-400 hover:text-[#0EA5E9] transition-colors">
                 <X size={18} />
               </button>
             </div>
