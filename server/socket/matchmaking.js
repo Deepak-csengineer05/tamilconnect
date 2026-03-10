@@ -13,6 +13,14 @@ const User = require('../models/User');
  * 4. PeerJS IDs are exchanged for WebRTC video connection
  */
 
+/**
+ * Smart Matchmaking Algorithm — 3-tier fallback
+ *
+ * Tier 1 (instant):   Smart match — shared interests + language compatibility
+ * Tier 2 (5 seconds): Relaxed match — language compatible, any interests
+ * Tier 3 (10 seconds): Anyone online — pure Omegle-style, no filters
+ */
+
 // Waiting queue: Map<socketId, { socketId, peerId, uid, language, interests, joinedAt }>
 const waitingQueue = new Map();
 
@@ -27,54 +35,54 @@ const socketUserMap = new Map();
 
 /**
  * Calculate match score between two users.
- * Higher score = better match.
+ * Higher score = better match. Returns -1 for incompatible languages.
  */
 function calculateMatchScore(user1, user2) {
     let score = 0;
 
-    // Language compatibility check
     const langCompatible =
         user1.language === 'Both' ||
         user2.language === 'Both' ||
         user1.language === user2.language;
 
-    if (!langCompatible) return -1; // Incompatible languages
+    if (!langCompatible) return -1;
     if (user1.language === user2.language && user1.language !== 'Both') {
-        score += 3; // Exact language match bonus
+        score += 3;
     } else {
-        score += 1; // Partial compatibility
+        score += 1;
     }
 
-    // Count shared interests
     const shared = user1.interests.filter(i => user2.interests.includes(i));
-    score += shared.length * 2; // Each shared interest worth 2 points
+    score += shared.length * 2;
 
     return score;
 }
 
 /**
- * Find the best match for a user from the waiting queue.
- * Returns the socket ID of the best match, or null if none found.
+ * Find best match. mode controls strictness:
+ *   'smart'   — needs language compat + shared interests (score > 0)
+ *   'relaxed' — needs language compat only (score >= 0)
+ *   'anyone'  — any user in queue, no filters at all
  */
-function findBestMatch(user, isFallback = false) {
+function findBestMatch(user, mode = 'smart') {
     let bestMatch = null;
-    let bestScore = -1;
+    let bestScore = -Infinity;
 
     for (const [socketId, candidate] of waitingQueue) {
-        // Don't match with yourself
         if (socketId === user.socketId) continue;
-        // Don't match with the same user account
         if (candidate.uid === user.uid) continue;
 
-        const score = calculateMatchScore(user, candidate);
+        if (mode === 'anyone') {
+            // Accept literally anyone — return first valid candidate
+            return socketId;
+        }
 
-        // In fallback mode, accept any non-negative score
-        // In normal mode, require at least some compatibility (score > 0)
-        if (isFallback ? score >= 0 : score > 0) {
-            if (score > bestScore) {
-                bestScore = score;
-                bestMatch = socketId;
-            }
+        const score = calculateMatchScore(user, candidate);
+        const threshold = mode === 'relaxed' ? 0 : 1;
+
+        if (score >= threshold && score > bestScore) {
+            bestScore = score;
+            bestMatch = socketId;
         }
     }
 
@@ -93,7 +101,6 @@ function initializeSocket(io) {
         socket.on('join-queue', async (data) => {
             const { peerId, uid, language, interests } = data;
 
-            // Store socket-user mapping
             socketUserMap.set(socket.id, uid);
 
             const userEntry = {
@@ -105,29 +112,26 @@ function initializeSocket(io) {
                 joinedAt: Date.now(),
             };
 
-            // Try to find an immediate match
-            const matchSocketId = findBestMatch(userEntry);
-
-            if (matchSocketId) {
+            // Helper: execute a match between userEntry and a queued candidate
+            const executeMatch = async (matchSocketId, matchType) => {
                 const matchedUser = waitingQueue.get(matchSocketId);
+                if (!matchedUser) return false; // already matched by someone else
+
+                waitingQueue.delete(socket.id);
                 waitingQueue.delete(matchSocketId);
 
-                // Create a room for the matched pair
                 const roomId = `room_${socket.id}_${matchSocketId}`;
                 activeRooms.set(roomId, {
                     user1SocketId: socket.id,
                     user2SocketId: matchSocketId,
                 });
-
-                // Track room association
                 socketRoomMap.set(socket.id, roomId);
                 socketRoomMap.set(matchSocketId, roomId);
 
-                // Both users join the Socket.io room
                 socket.join(roomId);
                 io.sockets.sockets.get(matchSocketId)?.join(roomId);
 
-                // Fetch partner profiles from DB for display
+                // Fetch both profiles for display
                 let user1Profile = null;
                 let user2Profile = null;
                 try {
@@ -136,77 +140,64 @@ function initializeSocket(io) {
                         User.findOne({ uid: matchedUser.uid }).select('displayName language interests district').lean(),
                     ]);
                 } catch (err) {
-                    console.error('Failed to fetch profiles:', err.message);
+                    console.error('Profile fetch error:', err.message);
                 }
 
-                // Notify both users of the match
                 socket.emit('matched', {
                     peerId: matchedUser.peerId,
                     partnerUid: matchedUser.uid,
                     roomId,
                     partner: user2Profile,
+                    matchType,
                 });
-
                 io.to(matchSocketId).emit('matched', {
                     peerId: userEntry.peerId,
                     partnerUid: uid,
                     roomId,
                     partner: user1Profile,
+                    matchType,
                 });
 
-                // Increment chat count for both users
+                // Increment chat counts
                 try {
                     await Promise.all([
                         User.findOneAndUpdate({ uid }, { $inc: { chatCount: 1 } }),
                         User.findOneAndUpdate({ uid: matchedUser.uid }, { $inc: { chatCount: 1 } }),
                     ]);
                 } catch (err) {
-                    console.error('Failed to increment chat count:', err.message);
+                    console.error('Chat count error:', err.message);
                 }
-            } else {
-                // No match found — add to queue
-                waitingQueue.set(socket.id, userEntry);
 
-                // Set a 15-second fallback timer
-                setTimeout(() => {
-                    // Check if user is still in queue
-                    if (waitingQueue.has(socket.id)) {
-                        const fallbackMatch = findBestMatch(userEntry, true);
+                return true;
+            };
 
-                        if (fallbackMatch) {
-                            const matchedUser = waitingQueue.get(fallbackMatch);
-                            waitingQueue.delete(socket.id);
-                            waitingQueue.delete(fallbackMatch);
-
-                            const roomId = `room_${socket.id}_${fallbackMatch}`;
-                            activeRooms.set(roomId, {
-                                user1SocketId: socket.id,
-                                user2SocketId: fallbackMatch,
-                            });
-
-                            socketRoomMap.set(socket.id, roomId);
-                            socketRoomMap.set(fallbackMatch, roomId);
-
-                            socket.join(roomId);
-                            io.sockets.sockets.get(fallbackMatch)?.join(roomId);
-
-                            socket.emit('matched', {
-                                peerId: matchedUser.peerId,
-                                partnerUid: matchedUser.uid,
-                                roomId,
-                                partner: null, // Fallback match — profile fetched client-side
-                            });
-
-                            io.to(fallbackMatch).emit('matched', {
-                                peerId: userEntry.peerId,
-                                partnerUid: uid,
-                                roomId,
-                                partner: null,
-                            });
-                        }
-                    }
-                }, 15000);
+            // --- Tier 1: Instant smart match (interests + language) ---
+            const instantMatch = findBestMatch(userEntry, 'smart');
+            if (instantMatch) {
+                await executeMatch(instantMatch, 'smart');
+                return;
             }
+
+            // No immediate match — enter queue
+            waitingQueue.set(socket.id, userEntry);
+
+            // --- Tier 2: After 5s — language-compatible, any interests ---
+            setTimeout(async () => {
+                if (!waitingQueue.has(socket.id)) return;
+                const relaxedMatch = findBestMatch(userEntry, 'relaxed');
+                if (relaxedMatch) {
+                    await executeMatch(relaxedMatch, 'relaxed');
+                }
+            }, 5000);
+
+            // --- Tier 3: After 10s — anyone online, pure Omegle-style ---
+            setTimeout(async () => {
+                if (!waitingQueue.has(socket.id)) return;
+                const anyMatch = findBestMatch(userEntry, 'anyone');
+                if (anyMatch) {
+                    await executeMatch(anyMatch, 'random');
+                }
+            }, 10000);
         });
 
         /**

@@ -67,7 +67,14 @@ export default function Chat() {
       setPartnerUid(data.partnerUid)
       setRoomId(data.roomId)
       setMessages([])
-      toast.success('Match found!')
+
+      if (data.matchType === 'smart') {
+        toast.success('Matched by shared interests!')
+      } else if (data.matchType === 'relaxed') {
+        toast.success('Language match found!')
+      } else {
+        toast('Connected with a random person!', { icon: '🎲' })
+      }
 
       // Call the peer
       if (localStreamRef.current && peerRef.current) {
