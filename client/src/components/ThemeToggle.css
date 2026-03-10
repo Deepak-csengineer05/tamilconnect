@@ -1,4 +1,4 @@
-/* Compact 3D toggle — horizontal, dark navy ↔ teal theme */
+/* Compact 3D toggle — horizontal lever, Y-axis flip, dark navy ↔ teal */
 
 .tc-switch {
   display: inline-block;
@@ -24,24 +24,24 @@
   display: none;
 }
 
-/* OFF — dark theme: button tilted away (top lifts) */
+/* OFF — dark: right side (0) slightly toward viewer */
 .tc-btn {
   display: block;
   transition: all 0.3s cubic-bezier(1, 0, 1, 1);
   transform-origin: center center -4px;
-  transform: translateZ(4px) rotateX(-22deg);
+  transform: translateZ(4px) rotateY(22deg);
   transform-style: preserve-3d;
-  background: linear-gradient(#001433 0%, #000a1f 30%, #000a1f 70%, #001433 100%);
+  background: linear-gradient(to right, #001433 0%, #000a1f 30%, #000a1f 70%, #001433 100%);
   height: 100%;
   position: relative;
   cursor: pointer;
 }
 
-/* ON — teal theme: button tilts toward viewer + teal glow */
+/* ON — teal: left side (1) toward viewer + teal glow */
 .tc-switch input:checked + .tc-btn {
-  transform: translateZ(4px) rotateX(22deg);
-  box-shadow: 0 -4px 12px rgba(45, 212, 191, 0.9);
-  background: linear-gradient(#005c4a 0%, #003d30 30%, #003d30 70%, #005c4a 100%);
+  transform: translateZ(4px) rotateY(-22deg);
+  box-shadow: -6px 0 14px rgba(45, 212, 191, 0.85);
+  background: linear-gradient(to right, #005c4a 0%, #003d30 30%, #003d30 70%, #005c4a 100%);
 }
 
 .tc-switch input:checked + .tc-btn .tc-light {
@@ -54,11 +54,12 @@
   opacity: 0;
 }
 
-/* Top bevelled face */
+/* Left bevelled face */
 .tc-btn::before {
   content: "";
   background:
     linear-gradient(
+      to right,
       rgba(255, 255, 255, 0.8) 10%,
       rgba(255, 255, 255, 0.25) 30%,
       #000c1a 75%,
@@ -67,25 +68,27 @@
     50% 50% / 97% 97%,
     #001840;
   background-repeat: no-repeat;
-  width: 100%;
-  height: 8px;
-  transform-origin: top;
-  transform: rotateX(-90deg);
+  width: 8px;
+  height: 100%;
+  transform-origin: left center;
+  transform: rotateY(-90deg);
   position: absolute;
+  left: 0;
   top: 0;
 }
 
-/* Bottom bevelled face / drop shadow */
+/* Right bevelled face / drop shadow */
 .tc-btn::after {
   content: "";
-  background-image: linear-gradient(#000c1a, #00060f);
-  width: 100%;
-  height: 8px;
-  transform-origin: top;
-  transform: translateY(8px) rotateX(-90deg);
+  background-image: linear-gradient(to right, #000c1a, #00060f);
+  width: 8px;
+  height: 100%;
+  transform-origin: right center;
+  transform: rotateY(90deg);
   position: absolute;
-  bottom: 0;
-  box-shadow: 0 8px 2px 0 #000, 0 14px 5px 0 rgba(0, 0, 0, 0.5);
+  right: 0;
+  top: 0;
+  box-shadow: 8px 0 2px 0 #000, 14px 0 5px 0 rgba(0, 0, 0, 0.5);
 }
 
 /* Inner teal light when ON */
@@ -107,7 +110,7 @@
   background-size: 3px 3px;
 }
 
-/* Power symbol — line left, open-circle right, both vertically centred */
+/* Power symbol — line (1) on left, open-circle (0) on right, both vertically centred */
 .tc-chars {
   position: absolute;
   width: 100%;
@@ -127,8 +130,9 @@
   width: 100%;
   height: 100%;
   background:
-    linear-gradient(white, transparent 3%) 50% 50% / 97% 97%,
+    linear-gradient(to right, rgba(255, 255, 255, 0.4), transparent 30%) 50% 50% / 97% 97%,
     linear-gradient(
+      to right,
       rgba(255, 255, 255, 0.5),
       transparent 50%,
       transparent 80%,
@@ -145,148 +149,7 @@
   position: absolute;
   width: 100%;
   height: 100%;
-  background: linear-gradient(transparent 60%, rgba(0, 0, 0, 0.85));
-  background-repeat: no-repeat;
-}
-
-@keyframes tc-flicker {
-  0%   { opacity: 1; }
-  80%  { opacity: 0.75; }
-  100% { opacity: 1; }
-}
-
-@keyframes tc-light-off {
-  0%  { opacity: 1; }
-  80% { opacity: 0; }
-}
-
-
-.tc-switch input {
-  display: none;
-}
-
-/* OFF — dark theme: button tilted away (pressed down) */
-.tc-btn {
-  display: block;
-  transition: all 0.3s cubic-bezier(1, 0, 1, 1);
-  transform-origin: center center -5px;
-  transform: translateZ(5px) rotateX(-25deg);
-  transform-style: preserve-3d;
-  background: linear-gradient(#001433 0%, #000a1f 30%, #000a1f 70%, #001433 100%);
-  height: 100%;
-  position: relative;
-  cursor: pointer;
-}
-
-/* ON — teal theme: button tilted toward viewer + teal glow */
-.tc-switch input:checked + .tc-btn {
-  transform: translateZ(5px) rotateX(25deg);
-  box-shadow: 0 -5px 14px rgba(45, 212, 191, 0.9);
-  background: linear-gradient(#005c4a 0%, #003d30 30%, #003d30 70%, #005c4a 100%);
-}
-
-.tc-switch input:checked + .tc-btn .tc-light {
-  animation: tc-flicker 0.2s infinite 0.3s;
-}
-.tc-switch input:checked + .tc-btn .tc-shine {
-  opacity: 1;
-}
-.tc-switch input:checked + .tc-btn .tc-shadow {
-  opacity: 0;
-}
-
-/* Top bevelled face */
-.tc-btn::before {
-  content: "";
-  background:
-    linear-gradient(
-      rgba(255, 255, 255, 0.8) 10%,
-      rgba(255, 255, 255, 0.25) 30%,
-      #000c1a 75%,
-      #00060f
-    )
-    50% 50% / 97% 97%,
-    #001840;
-  background-repeat: no-repeat;
-  width: 100%;
-  height: 11px;
-  transform-origin: top;
-  transform: rotateX(-90deg);
-  position: absolute;
-  top: 0;
-}
-
-/* Bottom bevelled face */
-.tc-btn::after {
-  content: "";
-  background-image: linear-gradient(#000c1a, #00060f);
-  width: 100%;
-  height: 11px;
-  transform-origin: top;
-  transform: translateY(11px) rotateX(-90deg);
-  position: absolute;
-  bottom: 0;
-  box-shadow: 0 11px 3px 0 #000, 0 18px 6px 0 rgba(0, 0, 0, 0.5);
-}
-
-/* Inner teal light when ON */
-.tc-light {
-  opacity: 0;
-  animation: tc-light-off 1s;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background-image: radial-gradient(rgba(160, 245, 232, 0.95), rgba(45, 212, 191, 0.85) 40%, transparent 70%);
-}
-
-/* Dot texture */
-.tc-dots {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background-image: radial-gradient(transparent 30%, rgba(0, 10, 30, 0.65) 70%);
-  background-size: 3px 3px;
-}
-
-/* Power symbol (line + circle) */
-.tc-chars {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background:
-    linear-gradient(white, white) 50% 20% / 5% 18%,
-    radial-gradient(circle, transparent 50%, white 52%, white 70%, transparent 72%) 50% 80% / 28% 22%;
-  background-repeat: no-repeat;
-  opacity: 0.6;
-}
-
-/* Shine highlight */
-.tc-shine {
-  transition: all 0.3s cubic-bezier(1, 0, 1, 1);
-  opacity: 0.3;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background:
-    linear-gradient(white, transparent 3%) 50% 50% / 97% 97%,
-    linear-gradient(
-      rgba(255, 255, 255, 0.5),
-      transparent 50%,
-      transparent 80%,
-      rgba(255, 255, 255, 0.5)
-    )
-    50% 50% / 97% 97%;
-  background-repeat: no-repeat;
-}
-
-/* Shadow vignette (fades out when ON) */
-.tc-shadow {
-  transition: all 0.3s cubic-bezier(1, 0, 1, 1);
-  opacity: 1;
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(transparent 70%, rgba(0, 0, 0, 0.85));
+  background: linear-gradient(to right, transparent 60%, rgba(0, 0, 0, 0.85));
   background-repeat: no-repeat;
 }
 
