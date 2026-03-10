@@ -7,7 +7,20 @@ const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const reportRoutes = require('./routes/report');
+const adminRoutes = require('./routes/admin');
+const roomsRoutes = require('./routes/rooms');
+const Room = require('./models/Room');
 const initializeSocket = require('./socket/matchmaking');
+const { initRoomsFromDB } = require('./socket/matchmaking');
+
+// Default rooms to seed if DB has none
+const DEFAULT_ROOMS = [
+    { key: 'csk-fans',   name: 'CSK Fan Room',        emoji: '🏏', desc: 'Talk cricket, IPL and CSK!',             isDefault: true },
+    { key: 'kollywood',  name: 'Kollywood Discussion', emoji: '🎬', desc: 'Movies, gossip and new releases',          isDefault: true },
+    { key: 'food-tn',    name: 'Food Lovers TN',       emoji: '🍛', desc: 'Recipes, restaurants & food',             isDefault: true },
+    { key: 'tech-tamil', name: 'Tech Tamil',           emoji: '💻', desc: 'Coding, startups & gadgets',              isDefault: true },
+    { key: 'music-jam',  name: 'Music Jam',            emoji: '🎵', desc: 'Tamil music, artists & more',             isDefault: true },
+];
 
 const app = express();
 const server = http.createServer(app);
@@ -43,6 +56,8 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/report', reportRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/rooms', roomsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
@@ -58,6 +73,19 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
     try {
         await connectDB();
+
+        // Seed default rooms if none exist
+        const roomCount = await Room.countDocuments();
+        if (roomCount === 0) {
+            await Room.insertMany(DEFAULT_ROOMS);
+            console.log('✅ Default rooms seeded');
+        }
+
+        // Load all rooms into socket memory
+        const rooms = await Room.find({}).lean();
+        initRoomsFromDB(rooms);
+        console.log(`✅ ${rooms.length} rooms loaded into socket`);
+
         server.listen(PORT, () => {
             console.log(`🚀 Server running on port ${PORT}`);
         });

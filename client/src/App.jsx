@@ -9,6 +9,7 @@ import Setup from './pages/Setup'
 import Chat from './pages/Chat'
 import Profile from './pages/Profile'
 import Rooms from './pages/Rooms'
+import Admin from './pages/Admin'
 
 const pageTransition = {
   initial: { opacity: 0, y: 12 },
@@ -28,6 +29,14 @@ function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return null
   return user ? children : <Navigate to="/login" replace />
+}
+
+function AdminRoute({ children }) {
+  const { user, loading, isAdmin } = useAuth()
+  if (loading) return null
+  if (!user) return <Navigate to="/login" replace />
+  if (!isAdmin) return <Navigate to="/chat" replace />
+  return children
 }
 
 function PublicRoute({ children }) {
@@ -122,6 +131,16 @@ export default function App() {
                   <Rooms />
                 </PageWrapper>
               </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <PageWrapper>
+                  <Admin />
+                </PageWrapper>
+              </AdminRoute>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

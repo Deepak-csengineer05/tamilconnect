@@ -14,6 +14,14 @@ const reportSchema = new mongoose.Schema({
         enum: ['Inappropriate content', 'Harassment', 'Spam', 'Underage'],
         required: true,
     },
+    resolved: {
+        type: Boolean,
+        default: false,
+    },
+    resolvedAt: {
+        type: Date,
+        default: null,
+    },
 }, {
     timestamps: true,
 });

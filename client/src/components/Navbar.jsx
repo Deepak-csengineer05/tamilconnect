@@ -3,12 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Video, User, LogOut, Users } from 'lucide-react'
+import { Menu, X, Video, User, LogOut, Users, Shield } from 'lucide-react'
 import ThemeToggle from './ThemeToggle'
 import toast from 'react-hot-toast'
 
 export default function Navbar() {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
   const { isTeal } = useTheme()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
@@ -88,6 +88,13 @@ export default function Navbar() {
                       <User size={16} /> Profile
                     </span>
                   </Link>
+                  {isAdmin && (
+                    <Link to="/admin" className={linkClass('/admin')}>
+                      <span className="flex items-center gap-1.5">
+                        <Shield size={16} /> Admin
+                      </span>
+                    </Link>
+                  )}
                   <div className="w-px h-6 bg-[rgba(14,165,233,0.2)] mx-1" />
                   <ThemeToggle />
                   <div className="w-px h-6 bg-[rgba(14,165,233,0.2)] mx-1" />
@@ -146,6 +153,11 @@ export default function Navbar() {
                     <Link to="/chat" onClick={() => setMenuOpen(false)} className={`block ${linkClass('/chat')}`}>Chat</Link>
                     <Link to="/rooms" onClick={() => setMenuOpen(false)} className={`block ${linkClass('/rooms')}`}>Rooms</Link>
                     <Link to="/profile" onClick={() => setMenuOpen(false)} className={`block ${linkClass('/profile')}`}>Profile</Link>
+                    {isAdmin && (
+                      <Link to="/admin" onClick={() => setMenuOpen(false)} className={`block ${linkClass('/admin')}`}>
+                        <span className="flex items-center gap-1.5"><Shield size={15} /> Admin</span>
+                      </Link>
+                    )}
                     <button onClick={() => { handleLogout(); setMenuOpen(false) }} className="w-full text-left px-4 py-2 rounded-lg text-red-400 hover:bg-red-400/10 text-sm">Logout</button>
                   </>
                 ) : (

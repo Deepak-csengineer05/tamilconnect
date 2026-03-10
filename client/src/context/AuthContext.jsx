@@ -17,10 +17,30 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [dbProfile, setDbProfile] = useState(null)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
+      if (firebaseUser) {
+        try {
+          const token = await firebaseUser.getIdToken()
+          const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (res.ok) {
+            const data = await res.json()
+            setDbProfile(data.user)
+            setIsAdmin(data.user?.isAdmin || false)
+          }
+        } catch {
+          // profile fetch failed; non-critical
+        }
+      } else {
+        setDbProfile(null)
+        setIsAdmin(false)
+      }
       setLoading(false)
     })
     return unsubscribe
@@ -53,6 +73,8 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     loading,
+    isAdmin,
+    dbProfile,
     loginWithEmail,
     loginWithGoogle,
     registerWithEmail,

@@ -100,18 +100,13 @@ function findBestMatch(user, mode = 'smart') {
 
 // ── Public Group Rooms ────────────────────────────────────────────────────
 const MAX_ROOM_SIZE = 6;
-const PUBLIC_ROOM_DEFS = [
-    { key: 'csk-fans',   name: 'CSK Fan Room',        emoji: '🏏' },
-    { key: 'kollywood',  name: 'Kollywood Discussion', emoji: '🎬' },
-    { key: 'food-tn',    name: 'Food Lovers TN',       emoji: '🍛' },
-    { key: 'tech-tamil', name: 'Tech Tamil',           emoji: '💻' },
-    { key: 'music-jam',  name: 'Music Jam',            emoji: '🎵' },
-];
 // publicRoomMap: roomKey -> [{socketId, peerId, uid, displayName}]
+// Populated dynamically from DB via initRoomsFromDB() called at server startup
 const publicRoomMap = new Map();
-PUBLIC_ROOM_DEFS.forEach(r => publicRoomMap.set(r.key, []));
 // socketPublicRoomMap: socketId -> roomKey
 const socketPublicRoomMap = new Map();
+// io instance stored for use in exported helper functions
+let _io = null;
 
 function getRoomCounts() {
     const counts = {};
@@ -120,6 +115,7 @@ function getRoomCounts() {
 }
 
 function initializeSocket(io) {
+    _io = io;
     io.on('connection', (socket) => {
         // ── Enforce connection cap ─────────────────────────────────
         const currentCount = io.sockets.sockets.size;
@@ -441,4 +437,36 @@ function initializeSocket(io) {
     });
 }
 
+// ── Dynamic room management (called from admin/rooms routes) ─────────────
+function initRoomsFromDB(rooms) {
+    publicRoomMap.clear();
+    rooms.forEach(r => publicRoomMap.set(r.key, []));
+}
+
+function addPublicRoom(key) {
+    if (!publicRoomMap.has(key)) {
+        publicRoomMap.set(key, []);
+    }
+    _io?.emit('room-counts', getRoomCounts());
+    _io?.emit('rooms-updated');
+}
+
+function removePublicRoom(key) {
+    const participants = publicRoomMap.get(key) || [];
+    participants.forEach(p => {
+        const s = _io?.sockets?.sockets?.get(p.socketId);
+        if (s) {
+            s.emit('room-deleted', { roomKey: key });
+            s.leave(`pub_${key}`);
+        }
+        socketPublicRoomMap.delete(p.socketId);
+    });
+    publicRoomMap.delete(key);
+    _io?.emit('room-counts', getRoomCounts());
+    _io?.emit('rooms-updated');
+}
+
 module.exports = initializeSocket;
+module.exports.initRoomsFromDB = initRoomsFromDB;
+module.exports.addPublicRoom = addPublicRoom;
+module.exports.removePublicRoom = removePublicRoom;

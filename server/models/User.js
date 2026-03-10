@@ -55,6 +55,14 @@ const userSchema = new mongoose.Schema({
         default: '',
     },
     follows: [{ type: String }], // array of uids this user follows
+    isAdmin: {
+        type: Boolean,
+        default: false,
+    },
+    banned: {
+        type: Boolean,
+        default: false,
+    },
 }, {
     timestamps: true,
 });
