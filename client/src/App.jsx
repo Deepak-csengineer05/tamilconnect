@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import { AnimatePresence, motion } from 'framer-motion'
 import Navbar from './components/Navbar'
+import IntroSplash from './components/IntroSplash'
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -49,6 +51,15 @@ export default function App() {
   const { loading } = useAuth()
   const location = useLocation()
 
+  // Show intro video once per browser session
+  const [showIntro, setShowIntro] = useState(
+    () => !sessionStorage.getItem('tc_intro_seen')
+  )
+  const handleIntroDone = () => {
+    sessionStorage.setItem('tc_intro_seen', '1')
+    setShowIntro(false)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#020B18]">
@@ -62,6 +73,7 @@ export default function App() {
 
   return (
     <>
+      {showIntro && <IntroSplash onDone={handleIntroDone} />}
       <Navbar />
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>

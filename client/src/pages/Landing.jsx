@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+﻿import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Sparkles, Video, Shield, Languages, Zap, Heart, Users, MapPin, MessageSquare } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
@@ -20,7 +20,7 @@ const FEATURES = [
   { icon: Video, title: 'HD Video Chat', desc: 'Crystal-clear video powered by WebRTC — no downloads required. Just open your browser and start talking.' },
   { icon: Shield, title: 'Safe Community', desc: 'Report system, auto-flagging, and moderation to keep TamilConnect a safe, respectful space for everyone.' },
   { icon: Languages, title: 'Tamil & English', desc: 'Chat in Tamil, English, or both. We match you with people who speak your preferred language.' },
-  { icon: Zap, title: 'Instant Connect', desc: 'Jump in and out of conversations instantly. Skip, end call, or find a new match — it\'s all one click away.' },
+  { icon: Zap, title: 'Instant Connect', desc: "Jump in and out of conversations instantly. Skip, end call, or find a new match — it's all one click away." },
   { icon: Heart, title: 'Interest Based', desc: 'Tag your hobbies — cricket, music, tech, movies — and meet people who vibe with the same things.' },
 ]
 

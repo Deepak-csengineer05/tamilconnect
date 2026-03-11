@@ -74,9 +74,7 @@ export default function Register() {
 
           <div className="p-8">
             <div className="flex justify-center mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[rgba(14,165,233,0.15)] to-[rgba(6,182,212,0.1)] border border-[rgba(14,165,233,0.25)] flex items-center justify-center">
-                <UserPlus size={26} className="text-[#0EA5E9]" />
-              </div>
+              <img src="/logo.png" alt="TamilConnect" className="w-16 h-16 object-contain drop-shadow-lg" />
             </div>
 
             <h2 className="text-2xl font-bold text-white text-center">Create Account</h2>

@@ -60,9 +60,11 @@ export default function Navbar() {
 
             {/* Logo */}
             <Link to={user ? '/chat' : '/'} className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#0EA5E9] to-[#06B6D4] flex items-center justify-center font-bold text-white text-lg">
-                T
-              </div>
+              <img
+                src="/logo.png"
+                alt="TamilConnect logo"
+                className="w-9 h-9 object-contain rounded-lg"
+              />
               <span className="text-lg font-bold">
                 <span className="gradient-text">Tamil</span>
                 <span className="text-white">Connect</span>
