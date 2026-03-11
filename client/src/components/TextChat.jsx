@@ -92,7 +92,7 @@ export default function TextChat({ messages, onSendMessage, onTyping, partnerTyp
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed md:relative right-0 top-0 md:top-auto h-full w-80 sm:w-96 md:w-80 lg:w-96 bg-[rgba(2,11,24,0.98)] border-l border-[rgba(14,165,233,0.15)] flex flex-col z-40 md:z-auto"
+            className="fixed md:relative right-0 top-16 md:top-auto h-[calc(100vh-4rem)] md:h-full w-80 sm:w-96 md:w-80 lg:w-96 bg-[rgba(2,11,24,0.98)] border-l border-[rgba(14,165,233,0.15)] flex flex-col z-40 md:z-auto"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(14,165,233,0.1)] shrink-0">

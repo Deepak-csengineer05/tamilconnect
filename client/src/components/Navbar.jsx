@@ -110,9 +110,9 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
+                  <ThemeToggle />
                   <Link to="/" className={linkClass('/')}>Home</Link>
                   <Link to="/login" className={linkClass('/login')}>Login</Link>
-                  <ThemeToggle />
                   <Link
                     to="/register"
                     className="px-5 py-2 rounded-lg bg-gradient-to-r from-[#0EA5E9] to-[#06B6D4] text-white text-sm font-semibold hover:shadow-lg hover:shadow-[rgba(14,165,233,0.3)] transition-all"

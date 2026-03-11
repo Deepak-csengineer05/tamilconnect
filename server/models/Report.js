@@ -26,4 +26,7 @@ const reportSchema = new mongoose.Schema({
     timestamps: true,
 });
 
+// Index for fast admin report listing (filter by resolved, sort by date)
+reportSchema.index({ resolved: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Report', reportSchema);

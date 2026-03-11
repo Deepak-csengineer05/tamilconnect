@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { io } from 'socket.io-client'
@@ -29,6 +29,14 @@ export default function Rooms() {
   const peerIdRef = useRef(null)
   const localStreamRef = useRef(null)
   const localVideoRef = useRef(null)
+  // Callback ref so local video re-attaches when the DOM element remounts (lobby → grid transition)
+  const setLocalVideoRef = useCallback(el => {
+    localVideoRef.current = el
+    if (el && localStreamRef.current) {
+      el.srcObject = localStreamRef.current
+      el.play().catch(() => {})
+    }
+  }, [])
   const messagesEndRef = useRef(null)
   const remoteCallsRef = useRef({})
 
@@ -95,7 +103,8 @@ export default function Rooms() {
     socket.on('room-state', ({ participants: ps }) => {
       setParticipants(ps)
       ps.forEach(p => {
-        if (p.peerId && p.peerId !== peerIdRef.current && localStreamRef.current && peerRef.current) {
+        // Skip if: no peerId, it's ourselves, no stream, no peer, or already calling this peer
+        if (p.peerId && p.peerId !== peerIdRef.current && localStreamRef.current && peerRef.current && !remoteCallsRef.current[p.peerId]) {
           const call = peerRef.current.call(p.peerId, localStreamRef.current)
           if (!call) return
           remoteCallsRef.current[p.peerId] = call
@@ -114,6 +123,20 @@ export default function Rooms() {
         if (prev.find(p => p.socketId === participant.socketId)) return prev
         return [...prev, participant]
       })
+      // Bidirectional call — existing members also call the new participant
+      // so that the connection is established even if the joiner's call() fails
+      if (participant.peerId && localStreamRef.current && peerRef.current && !remoteCallsRef.current[participant.peerId]) {
+        const call = peerRef.current.call(participant.peerId, localStreamRef.current)
+        if (call) {
+          remoteCallsRef.current[participant.peerId] = call
+          call.on('stream', stream => {
+            setRemoteStreams(prev => ({ ...prev, [participant.peerId]: stream }))
+          })
+          call.on('close', () => {
+            setRemoteStreams(prev => { const n = { ...prev }; delete n[participant.peerId]; return n })
+          })
+        }
+      }
       toast(`${participant.displayName} joined!`, { icon: '👋', duration: 2000 })
     })
 
@@ -177,10 +200,14 @@ export default function Rooms() {
         call.on('stream', stream => {
           setRemoteStreams(prev => ({ ...prev, [call.peer]: stream }))
         })
-        call.on('close', () => {
-          setRemoteStreams(prev => { const n = { ...prev }; delete n[call.peer]; return n })
-        })
-        remoteCallsRef.current[call.peer] = call
+        // Only register close-cleanup if we don't already have an outgoing call to this peer
+        // (bidirectional calls: let the outgoing call own the cleanup)
+        if (!remoteCallsRef.current[call.peer]) {
+          call.on('close', () => {
+            setRemoteStreams(prev => { const n = { ...prev }; delete n[call.peer]; return n })
+          })
+          remoteCallsRef.current[call.peer] = call
+        }
       }
     })
 
@@ -192,14 +219,6 @@ export default function Rooms() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  // ── Local video when room active ─────────────────────────────────────────
-  useEffect(() => {
-    if (activeRoom && localVideoRef.current && localStreamRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current
-      localVideoRef.current.play().catch(() => {})
-    }
-  }, [activeRoom])
 
   // ── Cleanup media on unmount ─────────────────────────────────────────────
   useEffect(() => {
@@ -218,6 +237,16 @@ export default function Rooms() {
     setJoining(room.key)
     // Stop any leftover tracks first
     stopMedia()
+    // Wait up to 8 s for PeerJS to get a peer ID before joining
+    if (!peerIdRef.current) {
+      await new Promise(resolve => {
+        let waited = 0
+        const t = setInterval(() => {
+          waited += 100
+          if (peerIdRef.current || waited >= 8000) { clearInterval(t); resolve() }
+        }, 100)
+      })
+    }
     let stream = null
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -521,7 +550,7 @@ export default function Rooms() {
           {/* Local preview */}
           <div className="relative w-56 h-40 sm:w-72 sm:h-52 rounded-2xl overflow-hidden border-2 border-[rgba(14,165,233,0.4)] shadow-xl shadow-[rgba(14,165,233,0.1)]">
             <video
-              ref={localVideoRef}
+              ref={setLocalVideoRef}
               autoPlay playsInline muted
               className="w-full h-full object-cover"
               style={{ transform: 'scaleX(-1)' }}
@@ -592,7 +621,7 @@ export default function Rooms() {
           onClick={() => setChatOpen(o => !o)}
           className="md:hidden fixed bottom-6 right-4 z-30 w-12 h-12 rounded-full bg-gradient-to-br from-[#0EA5E9] to-[#06B6D4] flex items-center justify-center shadow-lg shadow-[rgba(14,165,233,0.3)]"
         >
-          {chatOpen ? <X size={20} className="text-white" /> : <MessageCircle size={20} className="text-white" />}
+          <MessageCircle size={20} className="text-white" />
         </button>
 
         {/* Video grid — Bug 2: dynamic columns based on participant count */}
@@ -610,7 +639,7 @@ export default function Rooms() {
             {/* Local video */}
             <div className="relative aspect-video bg-[#020B18] rounded-xl overflow-hidden border border-[rgba(14,165,233,0.35)]">
               <video
-                ref={localVideoRef}
+                ref={setLocalVideoRef}
                 autoPlay
                 playsInline
                 muted
@@ -666,7 +695,6 @@ export default function Rooms() {
               <MessageCircle size={15} className="text-[#0EA5E9]" />
               <span className="text-sm font-medium text-white">Room Chat</span>
             </div>
-            {/* Bug 1: close button visible only on mobile */}
             <button onClick={() => setChatOpen(false)} className="md:hidden p-1 rounded text-slate-400 hover:text-[#0EA5E9]">
               <X size={16} />
             </button>

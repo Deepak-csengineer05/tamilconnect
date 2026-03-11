@@ -22,6 +22,16 @@ const MAX_CONNECTIONS = 100; // safe ceiling for 512 MB / 0.1 vCPU free tier
 // Waiting queue: Map<socketId, { socketId, peerId, uid, language, interests, joinedAt }>
 const waitingQueue = new Map();
 
+// Debounce room-counts broadcast so rapid join/leave cycles don’t fan-out to all clients
+let _roomCountsTimer = null;
+function broadcastRoomCounts() {
+    if (_roomCountsTimer) return;
+    _roomCountsTimer = setTimeout(() => {
+        _roomCountsTimer = null;
+        if (_io) _io.emit('room-counts', getRoomCounts());
+    }, 100);
+}
+
 // Active rooms: Map<roomId, { user1SocketId, user2SocketId }>
 const activeRooms = new Map();
 
@@ -376,7 +386,7 @@ function initializeSocket(io) {
                         displayName: leaving.displayName,
                     });
                 }
-                io.emit('room-counts', getRoomCounts());
+                broadcastRoomCounts();
             }
 
             // Broadcast updated online count (after cleanup)
@@ -405,7 +415,7 @@ function initializeSocket(io) {
             });
             // Notify others that someone joined
             socket.to(`pub_${roomKey}`).emit('room-peer-joined', { participant });
-            io.emit('room-counts', getRoomCounts());
+            broadcastRoomCounts();
         });
 
         socket.on('leave-public-room', () => {
@@ -422,7 +432,7 @@ function initializeSocket(io) {
                     displayName: leaving.displayName,
                 });
             }
-            io.emit('room-counts', getRoomCounts());
+            broadcastRoomCounts();
         });
 
         socket.on('room-message', ({ roomKey, message, senderName }) => {
@@ -447,7 +457,7 @@ function addPublicRoom(key) {
     if (!publicRoomMap.has(key)) {
         publicRoomMap.set(key, []);
     }
-    _io?.emit('room-counts', getRoomCounts());
+    broadcastRoomCounts();
     _io?.emit('rooms-updated');
 }
 
