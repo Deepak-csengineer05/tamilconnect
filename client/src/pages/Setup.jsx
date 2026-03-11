@@ -5,16 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { User, MapPin, Languages, Sparkles, ChevronRight, ChevronLeft, Check, Search, X, Smile } from 'lucide-react'
 import InterestTags from '../components/InterestTags'
 import toast from 'react-hot-toast'
-
-const DISTRICTS = [
-  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri',
-  'Dindigul', 'Erode', 'Kallakurichi', 'Kanchipuram', 'Kanyakumari', 'Karur',
-  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal', 'Nilgiris',
-  'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet', 'Salem', 'Sivaganga',
-  'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi', 'Tiruchirappalli', 'Tirunelveli',
-  'Tirupathur', 'Tiruppur', 'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore',
-  'Viluppuram', 'Virudhunagar',
-]
+import { DISTRICTS } from '../lib/constants'
 
 const STEP_ICONS = [User, Smile, MapPin, Languages, Sparkles]
 const STEP_LABELS = ['Name', 'Gender', 'Location', 'Language', 'Interests']
@@ -74,7 +65,7 @@ export default function Setup() {
       if (!res.ok) throw new Error(data.error || 'Setup failed')
       setLoading(false)
       toast.success("Profile created! Let's start chatting.")
-      window.location.href = '/chat'
+      navigate('/chat')
     } catch (err) {
       toast.error(err.message)
       setLoading(false)

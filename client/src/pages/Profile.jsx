@@ -3,16 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { motion } from 'framer-motion'
 import { Edit3, Save, X, MapPin, Languages as LangIcon, MessageSquare, Sparkles, Plus, UserCheck, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-const DISTRICTS = [
-  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri',
-  'Dindigul', 'Erode', 'Kallakurichi', 'Kanchipuram', 'Kanyakumari', 'Karur',
-  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal', 'Nilgiris',
-  'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet', 'Salem', 'Sivaganga',
-  'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi', 'Tiruchirappalli', 'Tirunelveli',
-  'Tirupathur', 'Tiruppur', 'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore',
-  'Viluppuram', 'Virudhunagar',
-]
+import { DISTRICTS } from '../lib/constants'
 
 export default function Profile() {
   const { getToken, user: firebaseUser } = useAuth()

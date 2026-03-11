@@ -11,6 +11,7 @@ import VideoBox from '../components/VideoBox'
 import TextChat from '../components/TextChat'
 import ReportModal from '../components/ReportModal'
 import toast from 'react-hot-toast'
+import { ICE_SERVERS } from '../lib/constants'
 
 const VIBES = [
   { key: 'fun',     emoji: '😂', label: 'Just Fun' },
@@ -21,10 +22,11 @@ const VIBES = [
 ]
 
 export default function Chat() {
-  const { user, getToken } = useAuth()
+  const { user, getToken, dbProfile } = useAuth()
 
   // Connection states
   const [status, setStatus] = useState('idle') // idle | searching | connected
+  // Use the profile already fetched by AuthContext; fall back to local state for mid-session updates
   const [profile, setProfile] = useState(null)
   const [partnerInfo, setPartnerInfo] = useState(null)
   const [partnerUid, setPartnerUid] = useState(null)
@@ -80,24 +82,10 @@ export default function Chat() {
     }
   }, [])
 
-  // Fetch user profile on mount
+  // Sync profile from AuthContext (already fetched on login — avoids a duplicate API call)
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const token = await getToken()
-        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          setProfile(data.user)
-        }
-      } catch {
-        // Profile fetch failed silently
-      }
-    }
-    fetchProfile()
-  }, [getToken])
+    if (dbProfile) setProfile(dbProfile)
+  }, [dbProfile])
 
   // Initialize socket
   useEffect(() => {
@@ -177,6 +165,12 @@ export default function Chat() {
       toast.error('Server is at capacity. Please try again in a few minutes.')
     })
 
+    socket.on('banned', () => {
+      toast.error('Your account has been banned. Contact support if you believe this is a mistake.')
+      stopMediaTracks()
+      setStatus('idle')
+    })
+
     return () => {
       socket.disconnect()
     }
@@ -189,28 +183,7 @@ export default function Chat() {
       port: Number(import.meta.env.VITE_PEERJS_PORT) || 443,
       path: import.meta.env.VITE_PEERJS_PATH || '/',
       secure: true,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-        ],
-      },
+      config: { iceServers: ICE_SERVERS },
     })
 
     peer.on('open', (id) => {

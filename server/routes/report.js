@@ -14,6 +14,12 @@ router.post('/', verifyToken, async (req, res) => {
             return res.status(400).json({ error: 'reportedId and reason are required' });
         }
 
+        // Prevent the same reporter from submitting multiple unresolved reports against the same user
+        const existing = await Report.findOne({ reporterId, reportedId, resolved: false });
+        if (existing) {
+            return res.status(409).json({ error: 'You have already reported this user' });
+        }
+
         // Create the report
         const report = await Report.create({
             reporterId,

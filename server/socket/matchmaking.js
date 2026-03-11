@@ -151,6 +151,18 @@ function initializeSocket(io) {
         socket.on('join-queue', async (data) => {
             const { peerId, uid, language, interests, vibe, district, sameDistrict } = data;
 
+            // Reject banned users before they enter the queue
+            try {
+                const userRecord = await User.findOne({ uid }).select('banned').lean();
+                if (userRecord?.banned) {
+                    socket.emit('banned');
+                    return;
+                }
+            } catch (err) {
+                console.error('Ban check error in join-queue:', err.message);
+                // Non-critical: allow to proceed on DB error rather than blocking legitimate users
+            }
+
             socketUserMap.set(socket.id, uid);
 
             const userEntry = {
@@ -268,10 +280,19 @@ function initializeSocket(io) {
          */
         socket.on('send-message', (data) => {
             const { roomId, message, senderName } = data;
+
+            // Verify the sender is actually a member of this room (prevents cross-room injection)
+            if (socketRoomMap.get(socket.id) !== roomId) return;
+
+            // Sanitize and enforce limits on message content
+            const safeMessage = typeof message === 'string' ? message.slice(0, 1000).trim() : '';
+            if (!safeMessage) return;
+            const safeSenderName = typeof senderName === 'string' ? senderName.slice(0, 60) : 'Unknown';
+
             // Broadcast message to the room (including sender for consistency)
             io.to(roomId).emit('receive-message', {
-                message,
-                senderName,
+                message: safeMessage,
+                senderName: safeSenderName,
                 senderId: socket.id,
                 timestamp: Date.now(),
             });
@@ -284,6 +305,8 @@ function initializeSocket(io) {
          */
         socket.on('typing', (data) => {
             const { roomId, isTyping } = data;
+            // Verify the sender is a member of this room before relaying
+            if (socketRoomMap.get(socket.id) !== roomId) return;
             socket.to(roomId).emit('partner-typing', { isTyping });
         });
 
@@ -403,7 +426,12 @@ function initializeSocket(io) {
             if (!ps) return;
             if (ps.length >= MAX_ROOM_SIZE) { socket.emit('room-full'); return; }
 
-            const participant = { socketId: socket.id, peerId, uid, displayName };
+            // Sanitize client-supplied displayName to prevent stored XSS in room
+            const safeDisplayName = typeof displayName === 'string'
+                ? displayName.slice(0, 60).trim() || 'Anonymous'
+                : 'Anonymous';
+
+            const participant = { socketId: socket.id, peerId, uid, displayName: safeDisplayName };
             ps.push(participant);
             socketPublicRoomMap.set(socket.id, roomKey);
             socket.join(`pub_${roomKey}`);
@@ -436,10 +464,16 @@ function initializeSocket(io) {
         });
 
         socket.on('room-message', ({ roomKey, message, senderName }) => {
-            if (!publicRoomMap.has(roomKey)) return;
+            // Verify sender is actually joined in this public room
+            if (socketPublicRoomMap.get(socket.id) !== roomKey) return;
+
+            const safeMessage = typeof message === 'string' ? message.slice(0, 1000).trim() : '';
+            if (!safeMessage) return;
+            const safeSenderName = typeof senderName === 'string' ? senderName.slice(0, 60) : 'Unknown';
+
             io.to(`pub_${roomKey}`).emit('room-message', {
-                message,
-                senderName,
+                message: safeMessage,
+                senderName: safeSenderName,
                 senderId: socket.id,
                 timestamp: Date.now(),
             });

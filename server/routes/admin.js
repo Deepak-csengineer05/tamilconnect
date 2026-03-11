@@ -51,11 +51,13 @@ router.get('/users', async (req, res) => {
         const { search = '', page = 1, limit = 20 } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
 
-        const filter = search
+        // Escape user input before using as regex to prevent ReDoS
+        const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const filter = escapedSearch
             ? {
                   $or: [
-                      { displayName: { $regex: search, $options: 'i' } },
-                      { email: { $regex: search, $options: 'i' } },
+                      { displayName: { $regex: escapedSearch, $options: 'i' } },
+                      { email: { $regex: escapedSearch, $options: 'i' } },
                   ],
               }
             : {};

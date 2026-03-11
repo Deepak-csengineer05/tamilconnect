@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import Peer from 'peerjs'
 import { MessageCircle, Users, Video, VideoOff, Mic, MicOff, LogOut, Send, Plus, X, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { ICE_SERVERS } from '../lib/constants'
 
 export default function Rooms() {
   const { user, getToken } = useAuth()
@@ -159,22 +160,7 @@ export default function Rooms() {
       port: Number(import.meta.env.VITE_PEERJS_PORT) || 443,
       path: import.meta.env.VITE_PEERJS_PATH || '/',
       secure: true,
-      config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-          {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-        ],
-      },
+      config: { iceServers: ICE_SERVERS },
     })
 
     peer.on('open', id => {
