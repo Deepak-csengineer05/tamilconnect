@@ -71,6 +71,15 @@ export default function Chat() {
   const remoteVideoRef = useRef(null)
   const peerIdRef = useRef(null)
 
+  // Callback ref — assigns srcObject the moment the video element mounts (connected state)
+  const setLocalVideoRef = useCallback(el => {
+    localVideoRef.current = el
+    if (el && localStreamRef.current) {
+      el.srcObject = localStreamRef.current
+      safePlay(el)
+    }
+  }, [])
+
   // Fetch user profile on mount
   useEffect(() => {
     const fetchProfile = async () => {
@@ -234,8 +243,8 @@ export default function Chat() {
   // Re-attach streams when connected state renders — refs are null before this state
   useEffect(() => {
     if (status === 'connected') {
-      // Local video element only mounts in connected state; localVideoRef was null in startSearching()
-      if (localVideoRef.current && localStreamRef.current) {
+      // Fallback: callback ref may have fired before safePlay was defined
+      if (localVideoRef.current && localStreamRef.current && !localVideoRef.current.srcObject) {
         localVideoRef.current.srcObject = localStreamRef.current
         safePlay(localVideoRef.current)
       }
@@ -703,9 +712,9 @@ export default function Chat() {
               </div>
 
               {/* Local video section — bottom ~40% on mobile, PIP overlay on desktop */}
-              <div className="flex-[2] min-h-0 relative border-t border-[rgba(14,165,233,0.2)] md:border-t-0 md:absolute md:bottom-4 md:right-4 md:w-52 md:h-[7.5rem] md:z-20 md:rounded-xl md:overflow-hidden md:border-2 md:border-[rgba(14,165,233,0.4)] md:shadow-lg md:shadow-black/40">
+              <div className="flex-[2] min-h-0 relative border-t border-[rgba(14,165,233,0.2)] md:border-t-0 md:absolute md:bottom-4 md:right-4 md:w-52 md:h-[7.5rem] md:z-30 md:rounded-xl md:overflow-hidden md:border-2 md:border-[rgba(14,165,233,0.4)] md:shadow-lg md:shadow-black/40">
                 <video
-                  ref={localVideoRef}
+                  ref={setLocalVideoRef}
                   autoPlay
                   playsInline
                   muted
