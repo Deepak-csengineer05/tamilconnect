@@ -76,7 +76,7 @@ export default function Chat() {
     localVideoRef.current = el
     if (el && localStreamRef.current) {
       el.srcObject = localStreamRef.current
-      safePlay(el)
+      safePlay(el, true)  // local video stays muted
     }
   }, [])
 
@@ -243,15 +243,13 @@ export default function Chat() {
   // Re-attach streams when connected state renders — refs are null before this state
   useEffect(() => {
     if (status === 'connected') {
-      // Fallback: callback ref may have fired before safePlay was defined
       if (localVideoRef.current && localStreamRef.current && !localVideoRef.current.srcObject) {
         localVideoRef.current.srcObject = localStreamRef.current
-        safePlay(localVideoRef.current)
+        safePlay(localVideoRef.current, true)
       }
-      // Remote stream may have arrived before the DOM node committed
       if (remoteVideoRef.current && remoteStreamRef.current) {
         remoteVideoRef.current.srcObject = remoteStreamRef.current
-        safePlay(remoteVideoRef.current)
+        safePlay(remoteVideoRef.current, false)
       }
     }
   }, [status])
@@ -263,13 +261,14 @@ export default function Chat() {
     }
   }, [])
 
-  const safePlay = (videoEl) => {
+  // muted=true before play() is required for Chrome autoplay policy (checks JS property at call time).
+  // keepMuted=true for local (always silent), false for remote (restore audio after play starts).
+  const safePlay = (videoEl, keepMuted = false) => {
     if (!videoEl) return
-    // load() is required on some mobile browsers before play() works after srcObject change
-    videoEl.load()
+    videoEl.muted = true
     const p = videoEl.play()
     if (p !== undefined) {
-      p.catch(() => {})
+      p.then(() => { if (!keepMuted) videoEl.muted = false }).catch(() => {})
     }
   }
 
@@ -489,7 +488,7 @@ export default function Chat() {
                 <Users size={13} />
                 {onlineCount > 0 ? `${onlineCount} online now` : 'Connecting...'}
               </span>
-              <span className="text-xs text-green-600">· free tier · max 100</span>
+              <span className="text-xs text-green-600">· free tier · max 50</span>
             </div>
 
             {profile && (
@@ -601,18 +600,17 @@ export default function Chat() {
             exit={{ opacity: 0 }}
             className="flex h-[calc(100vh-4rem)]"
           >
-            {/* Video area — stacked on mobile, PIP layout on desktop */}
-            <div className="flex-1 flex flex-col md:block relative min-h-0">
+            {/* Video area */}
+            <div className="flex-1 flex flex-col relative min-h-0">
 
-              {/* Remote video section — top ~60% on mobile, full area on desktop */}
-              <div className="flex-[3] min-h-0 relative md:absolute md:inset-0">
-                {/* Connected badge */}
+              {/* Remote video — flex-[3] on mobile, full-area on desktop */}
+              <div className="flex-[3] min-h-0 relative overflow-hidden md:absolute md:inset-0">
+                {/* Badges */}
                 <div className="absolute top-3 left-3 z-10 flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-1.5 bg-[rgba(3,15,30,0.8)] backdrop-blur-sm rounded-full px-3 py-1.5 border border-[rgba(34,197,94,0.3)]">
                     <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-xs font-medium text-green-300">Connected</span>
                   </div>
-                  {/* Follow button */}
                   <button
                     onClick={followPartner}
                     disabled={followLoading || isFollowing}
@@ -622,16 +620,11 @@ export default function Chat() {
                         : 'bg-[rgba(3,15,30,0.8)] border-[rgba(14,165,233,0.3)] text-slate-300 hover:text-[#38BDF8] hover:border-[rgba(14,165,233,0.5)]'
                     } disabled:opacity-60`}
                   >
-                    {isFollowing
-                      ? <><UserCheck size={12} /> Following</>
-                      : followLoading
-                        ? 'Following...'
-                        : <><UserPlus size={12} /> Follow</>
-                    }
+                    {isFollowing ? <><UserCheck size={12} /> Following</> : followLoading ? 'Following...' : <><UserPlus size={12} /> Follow</>}
                   </button>
                 </div>
 
-                {/* Blur wrapper — applied until user taps Reveal */}
+                {/* Blur wrapper */}
                 <div
                   className="w-full h-full"
                   style={{ filter: partnerBlurred ? 'blur(18px) saturate(0.4)' : 'none', transition: 'filter 0.4s ease' }}
@@ -645,6 +638,7 @@ export default function Chat() {
                     hasStream={remoteHasStream}
                   />
                 </div>
+
                 {/* Reveal overlay */}
                 {partnerBlurred && (
                   <div className="absolute inset-0 z-[15] flex items-center justify-center">
@@ -661,58 +655,58 @@ export default function Chat() {
                     </div>
                   </div>
                 )}
-
-                {/* Controls bar — inside remote section so it floats above local on mobile */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 bg-[rgba(3,15,30,0.85)] backdrop-blur-xl border border-[rgba(14,165,233,0.15)] rounded-2xl px-3 py-2.5">
-                  <button
-                    onClick={toggleMic}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                      micOn
-                        ? 'bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)]'
-                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                    }`}
-                  >
-                    {micOn ? <Mic size={17} /> : <MicOff size={17} />}
-                  </button>
-
-                  <button
-                    onClick={toggleCam}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                      camOn
-                        ? 'bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)]'
-                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                    }`}
-                  >
-                    {camOn ? <Video size={17} /> : <VideoOff size={17} />}
-                  </button>
-
-                  <button
-                    onClick={skipPartner}
-                    className="w-10 h-10 rounded-xl bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)] flex items-center justify-center hover:bg-[rgba(14,165,233,0.25)] transition-all"
-                  >
-                    <SkipForward size={17} />
-                  </button>
-
-                  <button
-                    onClick={() => setReportOpen(true)}
-                    className="w-10 h-10 rounded-xl bg-[rgba(14,165,233,0.15)] text-amber-400 border border-amber-500/20 flex items-center justify-center hover:bg-amber-500/15 transition-all"
-                  >
-                    <Flag size={17} />
-                  </button>
-
-                  <div className="w-px h-6 bg-[rgba(14,165,233,0.15)] mx-0.5" />
-
-                  <button
-                    onClick={endCall}
-                    className="w-10 h-10 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white flex items-center justify-center hover:shadow-lg hover:shadow-red-500/25 transition-all"
-                  >
-                    <PhoneOff size={17} />
-                  </button>
-                </div>
               </div>
 
-              {/* Local video section — bottom ~40% on mobile, PIP overlay on desktop */}
-              <div className="flex-[2] min-h-0 relative border-t border-[rgba(14,165,233,0.2)] md:border-t-0 md:absolute md:bottom-4 md:right-4 md:w-52 md:h-[7.5rem] md:z-30 md:rounded-xl md:overflow-hidden md:border-2 md:border-[rgba(14,165,233,0.4)] md:shadow-lg md:shadow-black/40">
+              {/* Controls — full-width dock on mobile (between videos), floating pill on desktop */}
+              <div className="shrink-0 flex items-center justify-evenly px-4 py-3 bg-[#020B18] border-t border-b border-[rgba(14,165,233,0.1)] md:absolute md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:z-[25] md:flex md:items-center md:justify-center md:gap-2 md:px-4 md:py-2.5 md:bg-[rgba(3,15,30,0.88)] md:backdrop-blur-xl md:border md:border-[rgba(14,165,233,0.15)] md:rounded-2xl md:w-auto">
+                <button
+                  onClick={toggleMic}
+                  className={`w-12 h-12 md:w-10 md:h-10 rounded-2xl md:rounded-xl flex items-center justify-center transition-all ${
+                    micOn
+                      ? 'bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)]'
+                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  }`}
+                >
+                  {micOn ? <Mic size={20} /> : <MicOff size={20} />}
+                </button>
+
+                <button
+                  onClick={toggleCam}
+                  className={`w-12 h-12 md:w-10 md:h-10 rounded-2xl md:rounded-xl flex items-center justify-center transition-all ${
+                    camOn
+                      ? 'bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)]'
+                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                  }`}
+                >
+                  {camOn ? <Video size={20} /> : <VideoOff size={20} />}
+                </button>
+
+                <button
+                  onClick={skipPartner}
+                  className="w-12 h-12 md:w-10 md:h-10 rounded-2xl md:rounded-xl bg-[rgba(14,165,233,0.15)] text-[#0EA5E9] border border-[rgba(14,165,233,0.3)] flex items-center justify-center hover:bg-[rgba(14,165,233,0.25)] transition-all"
+                >
+                  <SkipForward size={20} />
+                </button>
+
+                <button
+                  onClick={() => setReportOpen(true)}
+                  className="w-12 h-12 md:w-10 md:h-10 rounded-2xl md:rounded-xl bg-[rgba(14,165,233,0.15)] text-amber-400 border border-amber-500/20 flex items-center justify-center hover:bg-amber-500/15 transition-all"
+                >
+                  <Flag size={20} />
+                </button>
+
+                <div className="w-px h-7 bg-[rgba(14,165,233,0.15)]" />
+
+                <button
+                  onClick={endCall}
+                  className="w-12 h-12 md:w-10 md:h-10 rounded-2xl md:rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white flex items-center justify-center hover:shadow-lg hover:shadow-red-500/25 transition-all"
+                >
+                  <PhoneOff size={20} />
+                </button>
+              </div>
+
+              {/* Local video — flex-[2] on mobile, PIP above controls on desktop */}
+              <div className="flex-[2] min-h-0 relative overflow-hidden border-t border-[rgba(14,165,233,0.15)] md:border-0 md:absolute md:bottom-20 md:right-4 md:w-52 md:h-[7.5rem] md:z-30 md:rounded-xl md:border-2 md:border-[rgba(14,165,233,0.4)] md:shadow-lg md:shadow-black/40">
                 <video
                   ref={setLocalVideoRef}
                   autoPlay

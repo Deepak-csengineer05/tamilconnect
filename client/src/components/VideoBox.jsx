@@ -38,11 +38,7 @@ const VideoBox = forwardRef(function VideoBox(
         ref={ref}
         autoPlay
         playsInline
-        muted
-        onPlaying={e => {
-          // Start muted so iOS allows autoplay, then unmute once playing
-          if (!muted) e.currentTarget.muted = false
-        }}
+        muted={muted}
         className="w-full h-full object-cover"
       />
 

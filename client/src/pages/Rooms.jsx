@@ -653,8 +653,9 @@ export default function Rooms() {
                     ref={el => {
                       if (el && remoteStreams[p.peerId] && el.srcObject !== remoteStreams[p.peerId]) {
                         el.srcObject = remoteStreams[p.peerId]
-                        el.load()
-                        el.play().catch(() => {})
+                        el.muted = true
+                        const p2 = el.play()
+                        if (p2) p2.then(() => { el.muted = false }).catch(() => {})
                       }
                     }}
                   />
