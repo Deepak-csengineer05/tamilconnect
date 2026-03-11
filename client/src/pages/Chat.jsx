@@ -703,7 +703,7 @@ export default function Chat() {
               </div>
 
               {/* Local video section — bottom ~40% on mobile, PIP overlay on desktop */}
-              <div className="flex-[2] min-h-0 relative border-t border-[rgba(14,165,233,0.2)] md:border-t-0 md:absolute md:bottom-4 md:right-4 md:w-36 md:h-52 md:z-20 md:rounded-xl md:overflow-hidden md:border-2 md:border-[rgba(14,165,233,0.4)] md:shadow-lg md:shadow-black/40">
+              <div className="flex-[2] min-h-0 relative border-t border-[rgba(14,165,233,0.2)] md:border-t-0 md:absolute md:bottom-4 md:right-4 md:w-52 md:h-[7.5rem] md:z-20 md:rounded-xl md:overflow-hidden md:border-2 md:border-[rgba(14,165,233,0.4)] md:shadow-lg md:shadow-black/40">
                 <video
                   ref={localVideoRef}
                   autoPlay

@@ -123,20 +123,8 @@ export default function Rooms() {
         if (prev.find(p => p.socketId === participant.socketId)) return prev
         return [...prev, participant]
       })
-      // Bidirectional call — existing members also call the new participant
-      // so that the connection is established even if the joiner's call() fails
-      if (participant.peerId && localStreamRef.current && peerRef.current && !remoteCallsRef.current[participant.peerId]) {
-        const call = peerRef.current.call(participant.peerId, localStreamRef.current)
-        if (call) {
-          remoteCallsRef.current[participant.peerId] = call
-          call.on('stream', stream => {
-            setRemoteStreams(prev => ({ ...prev, [participant.peerId]: stream }))
-          })
-          call.on('close', () => {
-            setRemoteStreams(prev => { const n = { ...prev }; delete n[participant.peerId]; return n })
-          })
-        }
-      }
+      // The joiner calls existing members via room-state.
+      // Existing members only answer — no counter-call here to avoid WebRTC offer glare.
       toast(`${participant.displayName} joined!`, { icon: '👋', duration: 2000 })
     })
 
@@ -193,21 +181,17 @@ export default function Rooms() {
       peerIdRef.current = id
     })
 
-    // Answer incoming calls from other room members
+    // Answer incoming calls from room joiners
     peer.on('call', call => {
       if (localStreamRef.current) {
         call.answer(localStreamRef.current)
         call.on('stream', stream => {
           setRemoteStreams(prev => ({ ...prev, [call.peer]: stream }))
         })
-        // Only register close-cleanup if we don't already have an outgoing call to this peer
-        // (bidirectional calls: let the outgoing call own the cleanup)
-        if (!remoteCallsRef.current[call.peer]) {
-          call.on('close', () => {
-            setRemoteStreams(prev => { const n = { ...prev }; delete n[call.peer]; return n })
-          })
-          remoteCallsRef.current[call.peer] = call
-        }
+        call.on('close', () => {
+          setRemoteStreams(prev => { const n = { ...prev }; delete n[call.peer]; return n })
+        })
+        remoteCallsRef.current[call.peer] = call
       }
     })
 
@@ -616,13 +600,15 @@ export default function Rooms() {
       /* ── ACTIVE: other participants present ── */
       <div className="flex flex-col md:flex-row flex-1 min-h-0">
 
-        {/* Bug 1: Mobile chat FAB */}
-        <button
-          onClick={() => setChatOpen(o => !o)}
-          className="md:hidden fixed bottom-6 right-4 z-30 w-12 h-12 rounded-full bg-gradient-to-br from-[#0EA5E9] to-[#06B6D4] flex items-center justify-center shadow-lg shadow-[rgba(14,165,233,0.3)]"
-        >
-          <MessageCircle size={20} className="text-white" />
-        </button>
+        {/* Mobile chat FAB — hidden when chat panel is open */}
+        {!chatOpen && (
+          <button
+            onClick={() => setChatOpen(true)}
+            className="md:hidden fixed bottom-6 right-4 z-30 w-12 h-12 rounded-full bg-gradient-to-br from-[#0EA5E9] to-[#06B6D4] flex items-center justify-center shadow-lg shadow-[rgba(14,165,233,0.3)]"
+          >
+            <MessageCircle size={20} className="text-white" />
+          </button>
+        )}
 
         {/* Video grid — Bug 2: dynamic columns based on participant count */}
         <div className="flex-1 min-h-0 overflow-y-auto p-3">
@@ -661,10 +647,13 @@ export default function Rooms() {
                   <video
                     autoPlay
                     playsInline
+                    muted
+                    onPlaying={e => { e.currentTarget.muted = false }}
                     className="w-full h-full object-cover"
                     ref={el => {
                       if (el && remoteStreams[p.peerId] && el.srcObject !== remoteStreams[p.peerId]) {
                         el.srcObject = remoteStreams[p.peerId]
+                        el.load()
                         el.play().catch(() => {})
                       }
                     }}
