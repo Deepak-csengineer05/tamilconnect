@@ -630,18 +630,18 @@ export default function Chat() {
                   <button
                     onClick={followPartner}
                     disabled={followLoading || isFollowing}
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium backdrop-blur-sm border transition-all ${
+                    className={`flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-medium backdrop-blur-sm border transition-all ${
                       isFollowing
                         ? 'bg-[rgba(14,165,233,0.25)] border-[rgba(14,165,233,0.5)] text-[#38BDF8]'
                         : 'bg-[rgba(3,15,30,0.8)] border-[rgba(14,165,233,0.3)] text-slate-300 hover:text-[#38BDF8] hover:border-[rgba(14,165,233,0.5)]'
                     } disabled:opacity-60`}
                   >
-                    {isFollowing ? <><UserCheck size={12} /> Following</> : followLoading ? 'Following...' : <><UserPlus size={12} /> Follow</>}
+                    {isFollowing ? <><UserCheck size={14} /> Following</> : followLoading ? 'Following...' : <><UserPlus size={14} /> Follow</>}
                   </button>
                   <button
                     onClick={sendConnectRequest}
                     disabled={connectLoading || connectSent}
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium backdrop-blur-sm border transition-all ${
+                    className={`flex items-center gap-1.5 rounded-full px-3 sm:px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-medium backdrop-blur-sm border transition-all ${
                       connectSent
                         ? 'bg-[rgba(34,197,94,0.2)] border-[rgba(34,197,94,0.45)] text-green-200'
                         : 'bg-[rgba(3,15,30,0.8)] border-[rgba(34,197,94,0.35)] text-slate-300 hover:text-green-200'

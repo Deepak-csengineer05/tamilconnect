@@ -423,15 +423,15 @@ export default function Rooms() {
           {recommendedRooms.length > 0 && (
             <div className="mb-5 bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Star size={14} className="text-[#38BDF8]" />
-                <p className="text-sm font-semibold text-white">Recommended For You</p>
+                <Star size={16} className="text-[#38BDF8]" />
+                <p className="text-base sm:text-sm font-semibold text-white">Recommended For You</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {recommendedRooms.slice(0, 6).map((room) => (
                   <button
                     key={`rec-${room._id || room.key}`}
                     onClick={() => joinRoom(room)}
-                    className="px-3 py-1.5 rounded-xl text-xs border border-[rgba(14,165,233,0.2)] text-[#38BDF8] hover:bg-[rgba(14,165,233,0.08)] transition-colors"
+                    className="px-3 py-2 sm:py-1.5 rounded-xl text-sm sm:text-xs border border-[rgba(14,165,233,0.2)] text-[#38BDF8] hover:bg-[rgba(14,165,233,0.08)] transition-colors whitespace-nowrap"
                   >
                     {room.emoji || '💬'} {room.name}
                   </button>
@@ -443,17 +443,17 @@ export default function Rooms() {
           {events.length > 0 && (
             <div className="mb-5 bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
-                <CalendarDays size={14} className="text-[#22D3EE]" />
-                <p className="text-sm font-semibold text-white">Upcoming Events</p>
+                <CalendarDays size={16} className="text-[#22D3EE]" />
+                <p className="text-base sm:text-sm font-semibold text-white">Upcoming Events</p>
               </div>
               <div className="space-y-2">
                 {events.slice(0, 4).map((event) => (
-                  <div key={event._id} className="flex items-center justify-between text-xs bg-[rgba(14,165,233,0.04)] border border-[rgba(14,165,233,0.1)] rounded-xl px-3 py-2">
-                    <div>
-                      <p className="text-white">{event.title}</p>
-                      <p className="text-slate-500">{new Date(event.startsAt).toLocaleString('en-IN')}</p>
+                  <div key={event._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm sm:text-xs bg-[rgba(14,165,233,0.04)] border border-[rgba(14,165,233,0.1)] rounded-xl px-3 py-2.5 sm:py-2">
+                    <div className="min-w-0">
+                      <p className="text-white font-medium">{event.title}</p>
+                      <p className="text-slate-500 text-xs sm:text-[11px]">{new Date(event.startsAt).toLocaleString('en-IN')}</p>
                     </div>
-                    <span className="text-[#38BDF8]">{event.roomKey}</span>
+                    <span className="text-[#38BDF8] font-medium flex-shrink-0">{event.roomKey}</span>
                   </div>
                 ))}
               </div>

@@ -639,18 +639,18 @@ export default function Profile() {
         )}
 
         {/* Upgrade Hub */}
-        <div className="bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-6 space-y-5">
-          <h3 className="text-base font-semibold text-white">Upgrade Hub</h3>
+        <div className="bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-4 sm:p-6 space-y-5">
+          <h3 className="text-lg sm:text-base font-semibold text-white">Upgrade Hub</h3>
 
           <div>
-            <p className="text-xs text-slate-400 mb-2">Match Mode</p>
+            <p className="text-sm sm:text-xs text-slate-400 mb-2">Match Mode</p>
             <div className="grid grid-cols-2 gap-2">
               {MATCH_MODES.map((m) => (
                 <button
                   key={m.key}
                   type="button"
                   onClick={() => setMatchMode(m.key)}
-                  className={`px-3 py-2 rounded-xl text-xs border transition-all ${
+                  className={`px-3 py-2.5 sm:py-2 rounded-xl text-xs sm:text-xs border transition-all ${
                     matchMode === m.key
                       ? 'bg-[rgba(14,165,233,0.15)] border-[rgba(14,165,233,0.4)] text-[#38BDF8]'
                       : 'border-[rgba(14,165,233,0.15)] text-slate-400'
@@ -661,74 +661,74 @@ export default function Profile() {
               ))}
             </div>
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <button type="button" onClick={() => setStrictInterests((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${strictInterests ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+              <button type="button" onClick={() => setStrictInterests((v) => !v)} className={`px-3 py-2.5 sm:py-2 rounded-xl text-xs sm:text-xs border ${strictInterests ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
                 Strict Interests: {strictInterests ? 'On' : 'Off'}
               </button>
-              <button type="button" onClick={() => setSameDistrictOnly((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${sameDistrictOnly ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+              <button type="button" onClick={() => setSameDistrictOnly((v) => !v)} className={`px-3 py-2.5 sm:py-2 rounded-xl text-xs sm:text-xs border ${sameDistrictOnly ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
                 Same District: {sameDistrictOnly ? 'On' : 'Off'}
               </button>
-              <button type="button" onClick={() => setSafeModeEnabled((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${safeModeEnabled ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+              <button type="button" onClick={() => setSafeModeEnabled((v) => !v)} className={`px-3 py-2.5 sm:py-2 rounded-xl text-xs sm:text-xs border ${safeModeEnabled ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
                 Safe Mode: {safeModeEnabled ? 'On' : 'Off'}
               </button>
             </div>
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <button type="button" onClick={() => setFaceBlur((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${faceBlur ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+              <button type="button" onClick={() => setFaceBlur((v) => !v)} className={`px-3 py-2.5 sm:py-2 rounded-xl text-xs sm:text-xs border ${faceBlur ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
                 Face Blur: {faceBlur ? 'On' : 'Off'}
               </button>
-              <button type="button" onClick={() => setVoiceOnly((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${voiceOnly ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+              <button type="button" onClick={() => setVoiceOnly((v) => !v)} className={`px-3 py-2.5 sm:py-2 rounded-xl text-xs sm:text-xs border ${voiceOnly ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
                 Voice Only: {voiceOnly ? 'On' : 'Off'}
               </button>
-              <button type="button" onClick={() => setStrictProfileFilter((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${strictProfileFilter ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+              <button type="button" onClick={() => setStrictProfileFilter((v) => !v)} className={`px-3 py-2.5 sm:py-2 rounded-xl text-xs sm:text-xs border ${strictProfileFilter ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
                 Strict Filter: {strictProfileFilter ? 'On' : 'Off'}
               </button>
             </div>
-            <button onClick={savePreferences} disabled={savingPrefs} className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#06B6D4] text-white text-xs font-semibold disabled:opacity-50">
+            <button onClick={savePreferences} disabled={savingPrefs} className="mt-3 px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#06B6D4] text-white text-sm sm:text-xs font-semibold disabled:opacity-50 w-full sm:w-auto">
               {savingPrefs ? 'Saving...' : 'Save Preferences'}
             </button>
           </div>
 
           <div className="pt-3 border-t border-[rgba(14,165,233,0.1)]">
-            <p className="text-xs text-slate-400 mb-2">Referral</p>
-            <p className="text-xs text-slate-500 mb-2">Your code: <span className="text-[#38BDF8] font-semibold">{referral?.referralCode || '-'}</span> · Successful invites: {referral?.referralCount || 0}</p>
+            <p className="text-sm sm:text-xs text-slate-400 mb-2">Referral</p>
+            <p className="text-sm sm:text-xs text-slate-500 mb-2">Your code: <span className="text-[#38BDF8] font-semibold">{referral?.referralCode || '-'}</span> · Invites: {referral?.referralCount || 0}</p>
             {!referral?.referredBy && (
-              <div className="flex gap-2">
-                <input value={referralInput} onChange={(e) => setReferralInput(e.target.value)} placeholder="Enter referral code" className="flex-1 bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-xs text-white" />
-                <button onClick={redeemReferral} className="px-3 py-2 rounded-xl border border-[rgba(14,165,233,0.35)] text-[#38BDF8] text-xs">Redeem</button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input value={referralInput} onChange={(e) => setReferralInput(e.target.value)} placeholder="Enter referral code" className="flex-1 bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2.5 sm:py-2 text-sm sm:text-xs text-white" />
+                <button onClick={redeemReferral} className="px-4 py-2.5 sm:py-2 rounded-xl border border-[rgba(14,165,233,0.35)] text-[#38BDF8] text-sm sm:text-xs font-medium">Redeem</button>
               </div>
             )}
           </div>
 
           <div className="pt-3 border-t border-[rgba(14,165,233,0.1)]">
-            <p className="text-xs text-slate-400 mb-2">Campus Circle</p>
-            <div className="flex gap-2 mb-2">
-              <input value={collegeDraft} onChange={(e) => setCollegeDraft(e.target.value)} placeholder="College name" className="flex-1 bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-xs text-white" />
-              <button onClick={saveCampus} className="px-3 py-2 rounded-xl border border-[rgba(14,165,233,0.35)] text-[#38BDF8] text-xs">Save</button>
+            <p className="text-sm sm:text-xs text-slate-400 mb-2">Campus Circle</p>
+            <div className="flex flex-col sm:flex-row gap-2 mb-2">
+              <input value={collegeDraft} onChange={(e) => setCollegeDraft(e.target.value)} placeholder="College name" className="flex-1 bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2.5 sm:py-2 text-sm sm:text-xs text-white" />
+              <button onClick={saveCampus} className="px-4 py-2.5 sm:py-2 rounded-xl border border-[rgba(14,165,233,0.35)] text-[#38BDF8] text-sm sm:text-xs font-medium">Save</button>
             </div>
-            <p className="text-xs text-slate-500">Members in your circle: {campusUsers.length}</p>
+            <p className="text-sm sm:text-xs text-slate-500">Members: {campusUsers.length}</p>
           </div>
 
           <div className="pt-3 border-t border-[rgba(14,165,233,0.1)]">
-            <p className="text-xs text-slate-400 mb-2">Weekly Challenge</p>
-            <p className="text-xs text-slate-500 mb-2">Streak: {challenges?.streakDays || 0} days · Badges: {(challenges?.badges || []).length}</p>
-            <button onClick={checkInChallenge} className="px-3 py-2 rounded-xl border border-[rgba(14,165,233,0.35)] text-[#38BDF8] text-xs">Daily Check-in</button>
+            <p className="text-sm sm:text-xs text-slate-400 mb-2">Weekly Challenge</p>
+            <p className="text-sm sm:text-xs text-slate-500 mb-2">Streak: {challenges?.streakDays || 0} days · Badges: {(challenges?.badges || []).length}</p>
+            <button onClick={checkInChallenge} className="px-4 py-2.5 sm:py-2 rounded-xl border border-[rgba(14,165,233,0.35)] text-[#38BDF8] text-sm sm:text-xs font-medium">Daily Check-in</button>
           </div>
 
           <div className="pt-3 border-t border-[rgba(14,165,233,0.1)]">
-            <p className="text-xs text-slate-400 mb-2">Connection Requests</p>
+            <p className="text-sm sm:text-xs text-slate-400 mb-2">Connection Requests</p>
             {connectRequests.incoming?.length ? (
               <div className="space-y-2">
                 {connectRequests.incoming.slice(0, 4).map((r) => (
-                  <div key={r._id} className="flex items-center justify-between bg-[rgba(14,165,233,0.04)] border border-[rgba(14,165,233,0.1)] rounded-xl px-3 py-2">
-                    <span className="text-xs text-slate-300">From: {r.fromUid}</span>
-                    <div className="flex gap-2">
-                      <button onClick={() => respondConnectRequest(r._id, 'accept')} className="text-[10px] px-2 py-1 rounded bg-[#0EA5E9] text-white">Accept</button>
-                      <button onClick={() => respondConnectRequest(r._id, 'reject')} className="text-[10px] px-2 py-1 rounded border border-red-400 text-red-300">Reject</button>
+                  <div key={r._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-[rgba(14,165,233,0.04)] border border-[rgba(14,165,233,0.1)] rounded-xl px-3 py-2.5 sm:py-2">
+                    <span className="text-sm sm:text-xs text-slate-300 break-all">From: {r.fromUid}</span>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <button onClick={() => respondConnectRequest(r._id, 'accept')} className="flex-1 sm:flex-none text-xs sm:text-[10px] px-3 sm:px-2 py-2 sm:py-1 rounded bg-[#0EA5E9] text-white font-medium">Accept</button>
+                      <button onClick={() => respondConnectRequest(r._id, 'reject')} className="flex-1 sm:flex-none text-xs sm:text-[10px] px-3 sm:px-2 py-2 sm:py-1 rounded border border-red-400 text-red-300 font-medium">Reject</button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-500">No pending requests</p>
+              <p className="text-sm sm:text-xs text-slate-500">No pending requests</p>
             )}
           </div>
         </div>
