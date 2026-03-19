@@ -41,12 +41,47 @@ const socketRoomMap = new Map();
 // Socket-to-userId mapping: Map<socketId, uid>
 const socketUserMap = new Map();
 
+const DISTRICT_NEIGHBORS = {
+    Chennai: ['Tiruvallur', 'Chengalpattu', 'Kanchipuram'],
+    Coimbatore: ['Tiruppur', 'Erode', 'The Nilgiris'],
+    Madurai: ['Dindigul', 'Sivaganga', 'Theni'],
+    Salem: ['Namakkal', 'Dharmapuri', 'Erode'],
+};
+
+const BLOCKED_TERMS = ['slur', 'abuse', 'explicit'];
+
+function isUnsafeMessage(text) {
+    if (!text) return false;
+    const lowered = String(text).toLowerCase();
+    return BLOCKED_TERMS.some(term => lowered.includes(term));
+}
+
+function districtCompatible(user1, user2) {
+    const m1 = user1.matchMode || 'smart';
+    const m2 = user2.matchMode || 'smart';
+
+    const check = (a, b, mode) => {
+        if (!a.district || !b.district) return mode !== 'district-only';
+        if (mode === 'district-only') return a.district === b.district;
+        if (mode === 'nearby-districts') {
+            if (a.district === b.district) return true;
+            const n = DISTRICT_NEIGHBORS[a.district] || [];
+            return n.includes(b.district);
+        }
+        return true;
+    };
+
+    return check(user1, user2, m1) && check(user2, user1, m2);
+}
+
 /**
  * Calculate match score between two users.
  * Higher score = better match. Returns -1 for incompatible languages.
  */
 function calculateMatchScore(user1, user2) {
     let score = 0;
+
+    if (!districtCompatible(user1, user2)) return -1;
 
     const langCompatible =
         user1.language === 'Both' ||
@@ -61,6 +96,9 @@ function calculateMatchScore(user1, user2) {
     }
 
     const shared = user1.interests.filter(i => user2.interests.includes(i));
+    if ((user1.strictInterests || user2.strictInterests) && shared.length === 0) {
+        return -1;
+    }
     score += shared.length * 2;
 
     // Vibe Mode: same vibe = strong bonus
@@ -149,7 +187,7 @@ function initializeSocket(io) {
          * Data: { peerId, uid, language, interests }
          */
         socket.on('join-queue', async (data) => {
-            const { peerId, uid, language, interests, vibe, district, sameDistrict } = data;
+            const { peerId, uid, language, interests, vibe, district, sameDistrict, matchMode, strictInterests } = data;
 
             // Reject banned users before they enter the queue
             try {
@@ -174,6 +212,8 @@ function initializeSocket(io) {
                 vibe: vibe || null,
                 district: district || null,
                 sameDistrict: sameDistrict || false,
+                matchMode: matchMode || 'smart',
+                strictInterests: Boolean(strictInterests),
                 joinedAt: Date.now(),
             };
 
@@ -287,6 +327,10 @@ function initializeSocket(io) {
             // Sanitize and enforce limits on message content
             const safeMessage = typeof message === 'string' ? message.slice(0, 1000).trim() : '';
             if (!safeMessage) return;
+            if (isUnsafeMessage(safeMessage)) {
+                socket.emit('message-blocked', { reason: 'unsafe-content' });
+                return;
+            }
             const safeSenderName = typeof senderName === 'string' ? senderName.slice(0, 60) : 'Unknown';
 
             // Broadcast message to the room (including sender for consistency)
@@ -469,6 +513,10 @@ function initializeSocket(io) {
 
             const safeMessage = typeof message === 'string' ? message.slice(0, 1000).trim() : '';
             if (!safeMessage) return;
+            if (isUnsafeMessage(safeMessage)) {
+                socket.emit('message-blocked', { reason: 'unsafe-content' });
+                return;
+            }
             const safeSenderName = typeof senderName === 'string' ? senderName.slice(0, 60) : 'Unknown';
 
             io.to(`pub_${roomKey}`).emit('room-message', {

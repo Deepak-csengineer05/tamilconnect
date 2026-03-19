@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { io } from 'socket.io-client'
 import Peer from 'peerjs'
-import { MessageCircle, Users, Video, VideoOff, Mic, MicOff, LogOut, Send, Plus, X, Trash2 } from 'lucide-react'
+import { MessageCircle, Users, Video, VideoOff, Mic, MicOff, LogOut, Send, Plus, X, Trash2, Star, CalendarDays } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { ICE_SERVERS } from '../lib/constants'
 
@@ -22,8 +22,20 @@ export default function Rooms() {
   const [joining, setJoining] = useState(null)
   const [chatOpen, setChatOpen] = useState(false)  // Bug 1: mobile chat toggle
   const [showCreate, setShowCreate] = useState(false)
-  const [newRoom, setNewRoom] = useState({ name: '', emoji: '💬', desc: '' })
+  const [newRoom, setNewRoom] = useState({
+    name: '',
+    emoji: '💬',
+    desc: '',
+    topic: '',
+    tags: '',
+    district: '',
+    language: 'Both',
+    roomType: 'public',
+    scheduledAt: '',
+  })
   const [creating, setCreating] = useState(false)
+  const [recommendedRooms, setRecommendedRooms] = useState([])
+  const [events, setEvents] = useState([])
 
   const socketRef = useRef(null)
   const peerRef = useRef(null)
@@ -72,8 +84,36 @@ export default function Rooms() {
     } catch {}
   }
 
+  const fetchRecommendedRooms = async () => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/rooms/recommended`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setRecommendedRooms(data.rooms || [])
+      }
+    } catch {}
+  }
+
+  const fetchEvents = async () => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/rooms/events/list`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setEvents(data.events || [])
+      }
+    } catch {}
+  }
+
   useEffect(() => {
     fetchRooms()
+    fetchRecommendedRooms()
+    fetchEvents()
   }, [getToken])
 
   // ── Socket ───────────────────────────────────────────────────────────────
@@ -141,6 +181,10 @@ export default function Rooms() {
 
     socket.on('room-message', msg => {
       setMessages(prev => [...prev, msg])
+    })
+
+    socket.on('message-blocked', () => {
+      toast.error('Message blocked by safety filter')
     })
 
     socket.on('room-full', () => {
@@ -293,17 +337,43 @@ export default function Rooms() {
     setCreating(true)
     try {
       const token = await getToken()
+      const tagList = newRoom.tags
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean)
+        .slice(0, 8)
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/rooms`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(newRoom),
+        body: JSON.stringify({
+          name: newRoom.name,
+          emoji: newRoom.emoji,
+          desc: newRoom.desc,
+          topic: newRoom.topic,
+          tags: tagList,
+          district: newRoom.district,
+          language: newRoom.language,
+          roomType: newRoom.roomType,
+          scheduledAt: newRoom.scheduledAt || null,
+        }),
       })
       const data = await res.json()
       if (res.ok) {
         toast.success('Room created!')
         setShowCreate(false)
-        setNewRoom({ name: '', emoji: '💬', desc: '' })
+        setNewRoom({
+          name: '',
+          emoji: '💬',
+          desc: '',
+          topic: '',
+          tags: '',
+          district: '',
+          language: 'Both',
+          roomType: 'public',
+          scheduledAt: '',
+        })
         fetchRooms()
+        fetchRecommendedRooms()
       } else {
         toast.error(data.error || 'Failed to create room')
       }
@@ -349,6 +419,46 @@ export default function Rooms() {
             <h1 className="text-3xl font-bold text-white mb-2">Public Rooms</h1>
             <p className="text-slate-400 text-sm">Join a topic room — video + chat with up to 6 people</p>
           </div>
+
+          {recommendedRooms.length > 0 && (
+            <div className="mb-5 bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Star size={14} className="text-[#38BDF8]" />
+                <p className="text-sm font-semibold text-white">Recommended For You</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recommendedRooms.slice(0, 6).map((room) => (
+                  <button
+                    key={`rec-${room._id || room.key}`}
+                    onClick={() => joinRoom(room)}
+                    className="px-3 py-1.5 rounded-xl text-xs border border-[rgba(14,165,233,0.2)] text-[#38BDF8] hover:bg-[rgba(14,165,233,0.08)] transition-colors"
+                  >
+                    {room.emoji || '💬'} {room.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {events.length > 0 && (
+            <div className="mb-5 bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarDays size={14} className="text-[#22D3EE]" />
+                <p className="text-sm font-semibold text-white">Upcoming Events</p>
+              </div>
+              <div className="space-y-2">
+                {events.slice(0, 4).map((event) => (
+                  <div key={event._id} className="flex items-center justify-between text-xs bg-[rgba(14,165,233,0.04)] border border-[rgba(14,165,233,0.1)] rounded-xl px-3 py-2">
+                    <div>
+                      <p className="text-white">{event.title}</p>
+                      <p className="text-slate-500">{new Date(event.startsAt).toLocaleString('en-IN')}</p>
+                    </div>
+                    <span className="text-[#38BDF8]">{event.roomKey}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3">
             {rooms.map(room => {
@@ -456,6 +566,71 @@ export default function Rooms() {
                       placeholder="What's this room about?"
                       className="w-full bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-[#0EA5E9]"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Topic</label>
+                    <input
+                      value={newRoom.topic}
+                      onChange={e => setNewRoom(r => ({ ...r, topic: e.target.value }))}
+                      placeholder="e.g. Startup Talk"
+                      className="w-full bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-[#0EA5E9]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Tags (comma separated)</label>
+                    <input
+                      value={newRoom.tags}
+                      onChange={e => setNewRoom(r => ({ ...r, tags: e.target.value }))}
+                      placeholder="music, movies, cricket"
+                      className="w-full bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-[#0EA5E9]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">District</label>
+                      <input
+                        value={newRoom.district}
+                        onChange={e => setNewRoom(r => ({ ...r, district: e.target.value }))}
+                        placeholder="optional"
+                        className="w-full bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-[#0EA5E9]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Language</label>
+                      <select
+                        value={newRoom.language}
+                        onChange={e => setNewRoom(r => ({ ...r, language: e.target.value }))}
+                        className="w-full bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#0EA5E9]"
+                      >
+                        <option value="Both">Both</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="English">English</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Room Type</label>
+                      <select
+                        value={newRoom.roomType}
+                        onChange={e => setNewRoom(r => ({ ...r, roomType: e.target.value }))}
+                        className="w-full bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#0EA5E9]"
+                      >
+                        <option value="public">Public</option>
+                        <option value="district">District</option>
+                        <option value="interest">Interest</option>
+                        <option value="event">Event</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Schedule (optional)</label>
+                      <input
+                        type="datetime-local"
+                        value={newRoom.scheduledAt}
+                        onChange={e => setNewRoom(r => ({ ...r, scheduledAt: e.target.value }))}
+                        className="w-full bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#0EA5E9]"
+                      />
+                    </div>
                   </div>
                   <button
                     onClick={createRoom}

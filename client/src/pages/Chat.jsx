@@ -46,6 +46,8 @@ export default function Chat() {
   // Follow states
   const [isFollowing, setIsFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const [connectLoading, setConnectLoading] = useState(false)
+  const [connectSent, setConnectSent] = useState(false)
 
   // Vibe + matchmaking preferences
   const [vibe, setVibe] = useState(null)
@@ -87,6 +89,11 @@ export default function Chat() {
     if (dbProfile) setProfile(dbProfile)
   }, [dbProfile])
 
+  useEffect(() => {
+    if (!profile) return
+    setSameDistrictMode(Boolean(profile.matchPreferences?.sameDistrictOnly))
+  }, [profile])
+
   // Initialize socket
   useEffect(() => {
     const socket = io(import.meta.env.VITE_BACKEND_URL, { transports: ['websocket', 'polling'] })
@@ -98,7 +105,8 @@ export default function Chat() {
       setPartnerUid(data.partnerUid)
       setRoomId(data.roomId)
       setMessages([])
-      setPartnerBlurred(true)
+      setPartnerBlurred(Boolean(profile?.safeMode?.faceBlur))
+      setConnectSent(false)
 
       if (data.matchType === 'smart') {
         toast.success('Matched by shared interests!')
@@ -155,6 +163,10 @@ export default function Chat() {
 
     socket.on('partner-typing', (data) => {
       setPartnerTyping(data.isTyping)
+    })
+
+    socket.on('message-blocked', () => {
+      toast.error('Message blocked by safety filter')
     })
 
     socket.on('online-count', (count) => {
@@ -330,6 +342,8 @@ export default function Chat() {
         vibe,
         district: profile?.district || null,
         sameDistrict: sameDistrictMode,
+        matchMode: profile?.matchPreferences?.mode || 'smart',
+        strictInterests: Boolean(profile?.matchPreferences?.strictInterests),
       })
     }
   }
@@ -364,6 +378,8 @@ export default function Chat() {
         vibe,
         district: profile?.district || null,
         sameDistrict: sameDistrictMode,
+        matchMode: profile?.matchPreferences?.mode || 'smart',
+        strictInterests: Boolean(profile?.matchPreferences?.strictInterests),
       })
     }
   }
@@ -428,6 +444,33 @@ export default function Chat() {
       toast.error('Network error')
     } finally {
       setFollowLoading(false)
+    }
+  }
+
+  const sendConnectRequest = async () => {
+    if (!partnerUid || connectLoading || connectSent) return
+    setConnectLoading(true)
+    try {
+      const token = await getToken()
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/connect-request/${partnerUid}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ note: 'Great chat! Let us connect.' }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send request')
+      setConnectSent(true)
+      toast.success('Connection request sent')
+    } catch (err) {
+      toast.error(err.message || 'Could not send request')
+    } finally {
+      setConnectLoading(false)
     }
   }
 
@@ -594,6 +637,17 @@ export default function Chat() {
                     } disabled:opacity-60`}
                   >
                     {isFollowing ? <><UserCheck size={12} /> Following</> : followLoading ? 'Following...' : <><UserPlus size={12} /> Follow</>}
+                  </button>
+                  <button
+                    onClick={sendConnectRequest}
+                    disabled={connectLoading || connectSent}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium backdrop-blur-sm border transition-all ${
+                      connectSent
+                        ? 'bg-[rgba(34,197,94,0.2)] border-[rgba(34,197,94,0.45)] text-green-200'
+                        : 'bg-[rgba(3,15,30,0.8)] border-[rgba(34,197,94,0.35)] text-slate-300 hover:text-green-200'
+                    } disabled:opacity-60`}
+                  >
+                    {connectSent ? 'Request Sent' : connectLoading ? 'Sending...' : 'Connect'}
                   </button>
                 </div>
 

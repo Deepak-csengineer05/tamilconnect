@@ -5,6 +5,13 @@ import { Edit3, Save, X, MapPin, Languages as LangIcon, MessageSquare, Sparkles,
 import toast from 'react-hot-toast'
 import { DISTRICTS } from '../lib/constants'
 
+const MATCH_MODES = [
+  { key: 'smart', label: 'Smart Match' },
+  { key: 'district-only', label: 'District Only' },
+  { key: 'nearby-districts', label: 'Nearby Districts' },
+  { key: 'open', label: 'Open Match' },
+]
+
 export default function Profile() {
   const { getToken, user: firebaseUser } = useAuth()
   const [profile, setProfile] = useState(null)
@@ -19,6 +26,22 @@ export default function Profile() {
   const [editGender, setEditGender] = useState('')
   const [localInterests, setLocalInterests] = useState([])
   const [savingInterests, setSavingInterests] = useState(false)
+
+  // Major upgrade controls
+  const [savingPrefs, setSavingPrefs] = useState(false)
+  const [matchMode, setMatchMode] = useState('smart')
+  const [strictInterests, setStrictInterests] = useState(false)
+  const [sameDistrictOnly, setSameDistrictOnly] = useState(false)
+  const [safeModeEnabled, setSafeModeEnabled] = useState(false)
+  const [faceBlur, setFaceBlur] = useState(false)
+  const [voiceOnly, setVoiceOnly] = useState(false)
+  const [strictProfileFilter, setStrictProfileFilter] = useState(false)
+  const [referral, setReferral] = useState(null)
+  const [referralInput, setReferralInput] = useState('')
+  const [campusUsers, setCampusUsers] = useState([])
+  const [collegeDraft, setCollegeDraft] = useState('')
+  const [challenges, setChallenges] = useState(null)
+  const [connectRequests, setConnectRequests] = useState({ incoming: [], outgoing: [] })
 
   // Follows
   const [follows, setFollows] = useState([])
@@ -39,6 +62,14 @@ export default function Profile() {
         const data = await res.json()
         setProfile(data.user)
         setLocalInterests(data.user.interests || [])
+        setCollegeDraft(data.user.collegeName || '')
+        setMatchMode(data.user.matchPreferences?.mode || 'smart')
+        setStrictInterests(Boolean(data.user.matchPreferences?.strictInterests))
+        setSameDistrictOnly(Boolean(data.user.matchPreferences?.sameDistrictOnly))
+        setSafeModeEnabled(Boolean(data.user.safeMode?.enabled))
+        setFaceBlur(Boolean(data.user.safeMode?.faceBlur))
+        setVoiceOnly(Boolean(data.user.safeMode?.voiceOnly))
+        setStrictProfileFilter(Boolean(data.user.safeMode?.strictProfileFilter))
       }
     } catch {
       toast.error('Failed to load profile')
@@ -46,6 +77,31 @@ export default function Profile() {
       setLoading(false)
     }
   }
+
+  const fetchUpgradeData = async () => {
+    try {
+      const token = await getToken()
+      const [r1, r2, r3, r4] = await Promise.all([
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/referral`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/campus/circle`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/me/challenges`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/connect-requests`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+      if (r1.ok) setReferral(await r1.json())
+      if (r2.ok) {
+        const d = await r2.json()
+        setCampusUsers(d.users || [])
+      }
+      if (r3.ok) setChallenges(await r3.json())
+      if (r4.ok) setConnectRequests(await r4.json())
+    } catch {
+      // non-critical
+    }
+  }
+
+  useEffect(() => {
+    if (!loading && profile) fetchUpgradeData()
+  }, [loading, profile])
 
   const fetchFollows = async () => {
     setFollowsLoading(true)
@@ -147,6 +203,108 @@ export default function Profile() {
       toast.error(err.message)
     } finally {
       setSavingInterests(false)
+    }
+  }
+
+  const savePreferences = async () => {
+    setSavingPrefs(true)
+    try {
+      const token = await getToken()
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          matchPreferences: {
+            mode: matchMode,
+            strictInterests,
+            sameDistrictOnly,
+          },
+          safeMode: {
+            enabled: safeModeEnabled,
+            faceBlur,
+            voiceOnly,
+            strictProfileFilter,
+          },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to save preferences')
+      setProfile(data.user)
+      toast.success('Preferences saved')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSavingPrefs(false)
+    }
+  }
+
+  const saveCampus = async () => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/campus`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ collegeName: collegeDraft }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to save campus')
+      setProfile(data.user)
+      toast.success('Campus profile updated')
+      fetchUpgradeData()
+    } catch (err) {
+      toast.error(err.message)
+    }
+  }
+
+  const redeemReferral = async () => {
+    try {
+      if (!referralInput.trim()) return toast.error('Enter a referral code')
+      const token = await getToken()
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/referral/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code: referralInput.trim().toUpperCase() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to redeem')
+      toast.success('Referral redeemed')
+      setReferralInput('')
+      fetchUpgradeData()
+    } catch (err) {
+      toast.error(err.message)
+    }
+  }
+
+  const checkInChallenge = async () => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/me/challenge/checkin`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Check-in failed')
+      toast.success(data.message || 'Check-in recorded')
+      fetchUpgradeData()
+    } catch (err) {
+      toast.error(err.message)
+    }
+  }
+
+  const respondConnectRequest = async (id, action) => {
+    try {
+      const token = await getToken()
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/connect-request/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update request')
+      toast.success(`Request ${action}ed`)
+      fetchUpgradeData()
+    } catch (err) {
+      toast.error(err.message)
     }
   }
 
@@ -479,6 +637,101 @@ export default function Profile() {
             Member since {new Date(profile.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
           </p>
         )}
+
+        {/* Upgrade Hub */}
+        <div className="bg-[rgba(3,15,30,0.95)] border border-[rgba(14,165,233,0.15)] rounded-2xl p-6 space-y-5">
+          <h3 className="text-base font-semibold text-white">Upgrade Hub</h3>
+
+          <div>
+            <p className="text-xs text-slate-400 mb-2">Match Mode</p>
+            <div className="grid grid-cols-2 gap-2">
+              {MATCH_MODES.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  onClick={() => setMatchMode(m.key)}
+                  className={`px-3 py-2 rounded-xl text-xs border transition-all ${
+                    matchMode === m.key
+                      ? 'bg-[rgba(14,165,233,0.15)] border-[rgba(14,165,233,0.4)] text-[#38BDF8]'
+                      : 'border-[rgba(14,165,233,0.15)] text-slate-400'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button type="button" onClick={() => setStrictInterests((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${strictInterests ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+                Strict Interests: {strictInterests ? 'On' : 'Off'}
+              </button>
+              <button type="button" onClick={() => setSameDistrictOnly((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${sameDistrictOnly ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+                Same District: {sameDistrictOnly ? 'On' : 'Off'}
+              </button>
+              <button type="button" onClick={() => setSafeModeEnabled((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${safeModeEnabled ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+                Safe Mode: {safeModeEnabled ? 'On' : 'Off'}
+              </button>
+            </div>
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button type="button" onClick={() => setFaceBlur((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${faceBlur ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+                Face Blur: {faceBlur ? 'On' : 'Off'}
+              </button>
+              <button type="button" onClick={() => setVoiceOnly((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${voiceOnly ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+                Voice Only: {voiceOnly ? 'On' : 'Off'}
+              </button>
+              <button type="button" onClick={() => setStrictProfileFilter((v) => !v)} className={`px-3 py-2 rounded-xl text-xs border ${strictProfileFilter ? 'border-[#0EA5E9] text-[#38BDF8]' : 'border-[rgba(14,165,233,0.15)] text-slate-400'}`}>
+                Strict Filter: {strictProfileFilter ? 'On' : 'Off'}
+              </button>
+            </div>
+            <button onClick={savePreferences} disabled={savingPrefs} className="mt-3 px-4 py-2 rounded-xl bg-gradient-to-r from-[#0EA5E9] to-[#06B6D4] text-white text-xs font-semibold disabled:opacity-50">
+              {savingPrefs ? 'Saving...' : 'Save Preferences'}
+            </button>
+          </div>
+
+          <div className="pt-3 border-t border-[rgba(14,165,233,0.1)]">
+            <p className="text-xs text-slate-400 mb-2">Referral</p>
+            <p className="text-xs text-slate-500 mb-2">Your code: <span className="text-[#38BDF8] font-semibold">{referral?.referralCode || '-'}</span> · Successful invites: {referral?.referralCount || 0}</p>
+            {!referral?.referredBy && (
+              <div className="flex gap-2">
+                <input value={referralInput} onChange={(e) => setReferralInput(e.target.value)} placeholder="Enter referral code" className="flex-1 bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-xs text-white" />
+                <button onClick={redeemReferral} className="px-3 py-2 rounded-xl border border-[rgba(14,165,233,0.35)] text-[#38BDF8] text-xs">Redeem</button>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-3 border-t border-[rgba(14,165,233,0.1)]">
+            <p className="text-xs text-slate-400 mb-2">Campus Circle</p>
+            <div className="flex gap-2 mb-2">
+              <input value={collegeDraft} onChange={(e) => setCollegeDraft(e.target.value)} placeholder="College name" className="flex-1 bg-[rgba(14,165,233,0.05)] border border-[rgba(14,165,233,0.15)] rounded-xl px-3 py-2 text-xs text-white" />
+              <button onClick={saveCampus} className="px-3 py-2 rounded-xl border border-[rgba(14,165,233,0.35)] text-[#38BDF8] text-xs">Save</button>
+            </div>
+            <p className="text-xs text-slate-500">Members in your circle: {campusUsers.length}</p>
+          </div>
+
+          <div className="pt-3 border-t border-[rgba(14,165,233,0.1)]">
+            <p className="text-xs text-slate-400 mb-2">Weekly Challenge</p>
+            <p className="text-xs text-slate-500 mb-2">Streak: {challenges?.streakDays || 0} days · Badges: {(challenges?.badges || []).length}</p>
+            <button onClick={checkInChallenge} className="px-3 py-2 rounded-xl border border-[rgba(14,165,233,0.35)] text-[#38BDF8] text-xs">Daily Check-in</button>
+          </div>
+
+          <div className="pt-3 border-t border-[rgba(14,165,233,0.1)]">
+            <p className="text-xs text-slate-400 mb-2">Connection Requests</p>
+            {connectRequests.incoming?.length ? (
+              <div className="space-y-2">
+                {connectRequests.incoming.slice(0, 4).map((r) => (
+                  <div key={r._id} className="flex items-center justify-between bg-[rgba(14,165,233,0.04)] border border-[rgba(14,165,233,0.1)] rounded-xl px-3 py-2">
+                    <span className="text-xs text-slate-300">From: {r.fromUid}</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => respondConnectRequest(r._id, 'accept')} className="text-[10px] px-2 py-1 rounded bg-[#0EA5E9] text-white">Accept</button>
+                      <button onClick={() => respondConnectRequest(r._id, 'reject')} className="text-[10px] px-2 py-1 rounded border border-red-400 text-red-300">Reject</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">No pending requests</p>
+            )}
+          </div>
+        </div>
       </motion.div>
     </div>
   )
